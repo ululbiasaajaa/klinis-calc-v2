@@ -29,6 +29,8 @@ export default function Sidebar({
     crrt: t.navCrrt,
     electro: t.navElectro,
     ards: t.navArds,
+    pregnancy: t.navPregnancy,
+    renal_dose: t.navRenalDose,
     label_print: t.navLabelPrint,
     hd_dose: t.navHdDose,
     steroid: t.navSteroid,
