@@ -1,0 +1,142 @@
+import React, { useState } from 'react';
+import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
+
+export default function StoppStartCalculator() {
+  const { theme } = useTheme();
+  const { lang } = useLanguage();
+  const isDark = theme === 'dark';
+
+  // Daftar Kriteria STOPP (Potentially Inappropriate Medications in Older People)
+  const stoppCriteriaList = [
+    { id: 'stopp_1', category: 'Kardiovaskular', text: 'Loop diuretic sebagai lini pertama hipertensi (tanpa gagal jantung).' },
+    { id: 'stopp_2', category: 'Kardiovaskular', text: 'Beta-blocker dikombinasikan dengan verapamil atau diltiazem (risiko blokade jantung / asystole).' },
+    { id: 'stopp_3', category: 'Saraf Pusat', text: 'Benzodiazepine durasi panjang (diazepam, clobazam) atau kerja singkat untuk insomnia kronis.' },
+    { id: 'stopp_4', category: 'Saraf Pusat', text: 'Antipsikotik sebagai terapi lini pertama pada Behavioral and Psychological Symptoms of Dementia (BPSD).' },
+    { id: 'stopp_5', category: 'Gastrointestinal', text: 'PPI (Omeprazole/Lansoprazole) dosis penuh untuk tukak lambung >8 minggu tanpa indikasi jelas.' },
+    { id: 'stopp_6', category: 'Muskuloskeletal', text: 'NSAID jangka panjang (ibuprofen, meloxicam) pada riwayat hipertensi tidak terkontrol atau gagal jantung.' },
+  ];
+
+  // Daftar Kriteria START (Screening Tool to Alert to Right Treatment)
+  const startCriteriaList = [
+    { id: 'start_1', category: 'Kardiovaskular', text: 'Warfarin / DOAC pada pasien Atrial Fibrilasi kronis (jika tidak ada kontraindikasi perdarahan).' },
+    { id: 'start_2', category: 'Kardiovaskular', text: 'Statin pada pasien dengan riwayat penyakit kardiovaskular aterosklerotik (ASCVD).' },
+    { id: 'start_3', category: 'Respiratori', text: 'Inhaler LAMA (Long-Acting Muscarinic Antagonist) atau LABA untuk PPOK / Asma sedang-berat.' },
+    { id: 'start_4', category: 'Endokrin', text: 'ACE inhibitor atau ARB pada nefropati diabetik / proteinuria.' },
+    { id: 'start_5', category: 'Muskuloskeletal', text: 'Suplemen Kalsium & Vitamin D pada pasien osteoporosis terkonfirmasi atau riwayat fraktur.' },
+  ];
+
+  const [checkedStopp, setCheckedStopp] = useState({});
+  const [checkedStart, setCheckedStart] = useState({});
+
+  const handleToggleStopp = (id) => {
+    setCheckedStopp({ ...checkedStopp, [id]: !checkedStopp[id] });
+  };
+
+  const handleToggleStart = (id) => {
+    setCheckedStart({ ...checkedStart, [id]: !checkedStart[id] });
+  };
+
+  const stoppCount = Object.values(checkedStopp).filter(Boolean).length;
+  const startCount = Object.values(checkedStart).filter(Boolean).length;
+
+  return (
+    <div className="space-y-6">
+      <div className={`p-4 rounded-xl border text-xs ${
+        isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-blue-50 border-blue-200 text-slate-700'
+      }`}>
+        <p className="font-bold mb-1">👴 Modul Screening Geriatri STOPP / START v2:</p>
+        <p>
+          Centang temuan kondisi atau obat pada resep pasien lansia di bawah ini untuk mendeteksi potensi **Overprescribing (STOPP)** maupun **Underprescribing (START)**.
+        </p>
+      </div>
+
+      {/* SECTION STOPP */}
+      <div className={`p-5 rounded-2xl border ${
+        isDark ? 'bg-slate-900 border-red-900/50' : 'bg-white border-red-200 shadow-sm'
+      }`}>
+        <div className="flex justify-between items-center mb-4 border-b pb-3">
+          <h3 className="font-bold text-sm text-red-500 flex items-center gap-2">
+            <span>🛑</span> Kriteria STOPP (Potentially Inappropriate Prescriptions)
+          </h3>
+          <span className="text-xs bg-red-500/10 text-red-500 font-bold px-2.5 py-1 rounded-lg">
+            Terdeteksi: {stoppCount}
+          </span>
+        </div>
+
+        <div className="space-y-2.5">
+          {stoppCriteriaList.map((item) => (
+            <label
+              key={item.id}
+              className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                checkedStopp[item.id]
+                  ? 'bg-red-500/10 border-red-500/50'
+                  : isDark ? 'bg-slate-950 border-slate-800 hover:border-slate-700' : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={!!checkedStopp[item.id]}
+                onChange={() => handleToggleStopp(item.id)}
+                className="mt-0.5 w-4 h-4 rounded text-red-600 focus:ring-red-500"
+              />
+              <div className="text-xs">
+                <span className="font-bold text-red-400 block mb-0.5">[{item.category}]</span>
+                <span className={isDark ? 'text-slate-200' : 'text-slate-800'}>{item.text}</span>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* SECTION START */}
+      <div className={`p-5 rounded-2xl border ${
+        isDark ? 'bg-slate-900 border-emerald-900/50' : 'bg-white border-emerald-200 shadow-sm'
+      }`}>
+        <div className="flex justify-between items-center mb-4 border-b pb-3">
+          <h3 className="font-bold text-sm text-emerald-500 flex items-center gap-2">
+            <span>✅</span> Kriteria START (Omission / Kurang Terapi yang Diperlukan)
+          </h3>
+          <span className="text-xs bg-emerald-500/10 text-emerald-500 font-bold px-2.5 py-1 rounded-lg">
+            Terdeteksi: {startCount}
+          </span>
+        </div>
+
+        <div className="space-y-2.5">
+          {startCriteriaList.map((item) => (
+            <label
+              key={item.id}
+              className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                checkedStart[item.id]
+                  ? 'bg-emerald-500/10 border-emerald-500/50'
+                  : isDark ? 'bg-slate-950 border-slate-800 hover:border-slate-700' : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={!!checkedStart[item.id]}
+                onChange={() => handleToggleStart(item.id)}
+                className="mt-0.5 w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+              />
+              <div className="text-xs">
+                <span className="font-bold text-emerald-400 block mb-0.5">[{item.category}]</span>
+                <span className={isDark ? 'text-slate-200' : 'text-slate-800'}>{item.text}</span>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* KESIMPULAN EVALUASI */}
+      <div className={`p-4 rounded-xl border text-xs space-y-1 ${
+        isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+      }`}>
+        <p className="font-bold text-blue-500">📋 Ringkasan Evaluasi Geriatri:</p>
+        <p>
+          • <strong>STOPP Trigger:</strong> {stoppCount} potensi obat tidak tepat (perlu dipertimbangkan *deprescribing* / penghentian obat).<br />
+          • <strong>START Trigger:</strong> {startCount} indikasi obat yang terlewat (perlu dipertimbangkan penambahan terapi demi luaran klinis optimal).
+        </p>
+      </div>
+    </div>
+  );
+}

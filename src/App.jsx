@@ -9,11 +9,21 @@ import NtiCalculator from './calculators/NtiCalculator';
 import DdiCalculator from './calculators/DdiCalculator';
 import TdmChartCalculator from './calculators/TdmChartCalculator';
 import PedsGeriCalculator from './calculators/PedsGeriCalculator';
-import PrescriptionEtiquetteCalculator from './calculators/PrescriptionEtiquetteCalculator'; // Import Komponen Etiket
+import PrescriptionEtiquetteCalculator from './calculators/PrescriptionEtiquetteCalculator';
+import HemodialysisDoseCalculator from './calculators/HemodialysisDoseCalculator';
+import SteroidConversionCalculator from './calculators/SteroidConversionCalculator';
+import StoppStartCalculator from './calculators/StoppStartCalculator';
+import CrrtDoseCalculator from './calculators/CrrtDoseCalculator';
+import ElectrolyteCorrectionCalculator from './calculators/ElectrolyteCorrectionCalculator';
+import ArdsCalculator from './calculators/ArdsCalculator';
 import { useLanguage } from './context/LanguageContext';
+import { useTheme } from './context/ThemeContext';
 
 export default function App() {
   const { lang, t } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
   const [activeTab, setActiveTab] = useState('pk');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -90,12 +100,18 @@ export default function App() {
     if (window.confirm('Hapus seluruh riwayat hitungan?')) setHistory([]);
   };
 
-  // Menu Config dengan Tambahan Menu Label/Etiket
+  // Menu Config
   const menuItems = [
     { id: 'pk', name: 'Dosis PK (Farmakokinetik)', category: 'Dosis & Obat', icon: '💊' },
     { id: 'drip', name: 'Dosis Drip / Syringe Pump', category: 'Dosis & Obat', icon: '💉' },
     { id: 'peds_geri', name: 'Pediatrik & Geriatri', category: 'Dosis & Obat', icon: '👶' },
+    { id: 'stopp_start', name: 'Screening Geriatri (STOPP/START)', category: 'Dosis & Obat', icon: '📋' },
+    { id: 'crrt', name: 'Dosis ICU & CRRT', category: 'Dosis & Obat', icon: '🌡️' },
+    { id: 'electro', name: 'Koreksi Elektrolit Darurat (IGD)', category: 'Fisiologi & Cairan', icon: '🩸' },
+    { id: 'ards', name: 'Evaluasi ARDS & AGD (ICU)', category: 'Fisiologi & Cairan', icon: '🫁' },
     { id: 'label_print', name: 'Cetak Etiket & Resep Obat', category: 'Dosis & Obat', icon: '🖨️' },
+    { id: 'hd_dose', name: 'Dosis Pasien Cuci Darah (HD)', category: 'Organ & Fungsi', icon: '🧪' },
+    { id: 'steroid', name: 'Konversi Dosis Steroid', category: 'Dosis & Obat', icon: '🧬' },
     { id: 'nti', name: 'Obat Terapi Sempit (NTI / TDM)', category: 'Dosis & Obat', icon: '⚡' },
     { id: 'tdm_chart', name: 'Grafik Trend Monitoring TDM', category: 'Dosis & Obat', icon: '📊' },
     { id: 'ddi', name: 'Cek Interaksi Obat (DDI High-Risk)', category: 'Dosis & Obat', icon: '⚠️' },
@@ -121,10 +137,40 @@ export default function App() {
       formula: 'Dosis Anak = BB (kg) × Dosis Target (mg/kg/hari)\nBSA Mosteller = √[(TB × BB) / 3600]',
       guideline: 'Dosis anak tidak boleh melebihi batas dosis harian maksimal dewasa. Kriteria Beers digunakan untuk mencegah pemberian Potentially Inappropriate Medications (PIM) pada lansia.'
     },
+    stopp_start: {
+      title: 'Screening Kriteria STOPP/START v2 untuk Geriatri',
+      formula: 'Checklist Validasi Klinis Peresepan Lanjut Usia (PIM Detection & Underprescribing Omission)',
+      guideline: 'Digunakan untuk mengoptimalkan farmakoterapi pada pasien lanjut usia dengan meminimalkan efek simpang obat akibat polifarmasi dan memastikan indikasi obat esensial terpenuhi.'
+    },
+    crrt: {
+      title: 'Penyesuaian Dosis Antibiotik Berbasis CRRT di ICU',
+      formula: 'Target Dosis CRRT = Dosis Standar + [Effluent Rate Correction Factor (20-35 mL/kg/h)]',
+      guideline: 'Pasien kritis di ICU dengan Continuous Renal Replacement Therapy memerlukan peningkatan dosis antibiotik beta-laktam dan teknik Extended Infusion untuk mencegah resistensi.'
+    },
+    electro: {
+      title: 'Koreksi Elektrolit Darurat (KCl, NaCl 3%, & Meylon)',
+      formula: '1. KCl: Defisit = (K_target - K_current) × BB × 0.4\n2. NaCl 3%: Volume = [ΔNa × TBW × 1000] / (513 - Na_pasien)\n3. HCO3-: Devisit = 0.5 × BB × (18 - HCO3_current)',
+      guideline: 'Koreksi elektrolit darurat wajib dilakukan secara hati-hati dengan batasan kecepatan maksimal (misal: kenaikan Natrium max 8-10 mEq/L/24 jam untuk mencegah Osmotic Demyelination Syndrome).'
+    },
+    ards: {
+      title: 'Penilaian Gagal Napas & ARDS (Berlin Definition PaO2/FiO2)',
+      formula: 'Rasio PaO2 / FiO2 = PaO2 Serum / FiO2 Desimal',
+      guideline: 'Kriteria Berlin mendefinisikan ARDS berdasarkan rasio PaO2/FiO2 dengan PEEP minimal 5 cmH2O: Ringan (≤300), Sedang (≤200), dan Berat (≤100).'
+    },
     label_print: {
       title: 'Generator Label Etiket Obat Standar Kemenkes',
       formula: 'Aturan Pakai (Signa) + Penentuan Jalur Obat (Etiket Putih Oral vs Etiket Biru Topikal)',
       guideline: 'Etiket Obat berfungsi sebagai petunjuk resmi aturan pakai bagi pasien. Etiket putih digunakan khusus obat oral/ditelan, sedangkan etiket biru untuk obat pemakaian luar.'
+    },
+    hd_dose: {
+      title: 'Penyesuaian Dosis Pasien Hemodialisis (Cuci Darah)',
+      formula: 'Dosis Suplemen Post-HD = Dosis Normal × % Filter Clearance (Dialyzability Factor)',
+      guideline: 'Obat dengan BM kecil, Vd kecil, dan protein binding rendah tereliminasi saat proses HD. Berikan Dosis Suplemen segera setelah proses HD selesai.'
+    },
+    steroid: {
+      title: 'Konversi Dosis Equivalensi Kortikosteroid',
+      formula: 'Dosis Target = (Dosis Asal / Equivalen Asal) × Equivalen Target',
+      guideline: 'Digunakan untuk melakukan konversi dosis antar obat golongan kortikosteroid secara setara secara anti-inflamasi (misal: konversi Metilprednisolon ke Deksametason).'
     },
     nti: {
       title: 'Obat Indeks Terapi Sempit (TDM / NTI)',
@@ -144,7 +190,7 @@ export default function App() {
     renal: {
       title: 'Estimasi Fungsi Ginjal (ClCr & eGFR)',
       formula: 'Cockcroft-Gault: ClCr = [((140 - Usia) × BB) / (72 × Scr)] × (0.85 jika ♀)\neGFR: Persamaan CKD-EPI 2021 (Tanpa koefisien ras)',
-      guideline: 'Berdasarkan Guideline KDIGO. ClCr Cockcroft-Gault umum digunakan untuk adjustment dosis obat, sedangkan CKD-EPI 2021 digunakan untuk staging Penyakit Ginjal Kronis (PGK).'
+      guideline: 'Berdasarkan Guideline KDIGO. ClCr Cockcroft-Gault umum digunakan untuk acuan penyesuaian dosis obat, sedangkan CKD-EPI 2021 digunakan untuk staging Penyakit Ginjal Kronis (PGK).'
     },
     anthro: {
       title: 'Antropometri & Resusitasi Parkland',
@@ -320,8 +366,26 @@ export default function App() {
     if (activeTab === 'peds_geri') {
       return { isAlert: true, text: '👶/👵 EVALUASI PEDIATRIK/GERIATRI: Pastikan dosis penyesuaian tidak melebihi batas aman maksimal dewasa atau kriteria Beers.' };
     }
+    if (activeTab === 'stopp_start') {
+      return { isAlert: true, text: '📋 SCREENING STOPP/START: Lakukan peninjauan ulang resep polifarmasi pada pasien lansia demi meminimalisir adverse drug reactions.' };
+    }
+    if (activeTab === 'crrt') {
+      return { isAlert: true, text: '🌡️ ICU & CRRT DOSING: Pastikan pemberian antibiotik beta-laktam menggunakan metode Extended Infusion untuk mengoptimalkan PK/PD.' };
+    }
+    if (activeTab === 'electro') {
+      return { isAlert: true, text: '🩸 KOREKSI ELEKTROLIT: Perhatikan batas kecepatan aman infus (max 10-20 mEq/jam untuk KCl dan max 8-10 mEq/L/24 jam untuk NaCl 3%).' };
+    }
+    if (activeTab === 'ards') {
+      return { isAlert: true, text: '🫁 EVALUASI ARDS: Pastikan pemantauan rasio PaO2/FiO2 berkala pada pasien gagal napas dengan PEEP optimal.' };
+    }
     if (activeTab === 'label_print') {
       return { isAlert: true, text: '🖨️ ETIKET OBAT: Pastikan informasi aturan pakai (signa) dan jenis etiket (putih/biru) sudah sesuai dengan resep dokter.' };
+    }
+    if (activeTab === 'hd_dose') {
+      return { isAlert: true, text: '🧪 DOSIS HEMODIALISIS: Berikan Dosis Suplemen yang direkomendasikan SEGERA setelah proses cuci darah (Post-HD) selesai.' };
+    }
+    if (activeTab === 'steroid') {
+      return { isAlert: true, text: '🧬 KORSIKORESTEROID: Perhatikan aturan tappering off apabila penggunaan obat melebihi 2 minggu.' };
     }
     if (activeTab === 'renal' && egfr > 0 && egfr < 30) {
       return { isAlert: true, text: '🚨 ALERT: eGFR < 30 mL/min (CKD Stage 4-5 Severe). Wajib lakukan penyesuaian/penurunan dosis obat ginjal!' };
@@ -368,7 +432,13 @@ export default function App() {
     if (activeTab === 'pk') summaryText += `Evaluasi: Dosis PK\n- Loading Dose: ${ld} mg\n- Maintenance Dose: ${md} mg / ${pkInputs.interval || 0}j`;
     if (activeTab === 'drip') summaryText += `Evaluasi: Dosis Drip Syringe Pump\n- Kecepatan Infus: ${drip} mL/jam`;
     if (activeTab === 'peds_geri') summaryText += `Evaluasi: Dosis Pediatrik / Screening Beers Criteria Geriatri Selesai.`;
+    if (activeTab === 'stopp_start') summaryText += `Evaluasi: Screening STOPP/START Geriatri Selesai.`;
+    if (activeTab === 'crrt') summaryText += `Evaluasi: Penyesuaian Dosis CRRT di ICU Selesai.`;
+    if (activeTab === 'electro') summaryText += `Evaluasi: Koreksi Elektrolit Darurat Selesai.`;
+    if (activeTab === 'ards') summaryText += `Evaluasi: Penilaian ARDS & AGD Selesai.`;
     if (activeTab === 'label_print') summaryText += `Evaluasi: Pembuatan Etiket & Label Obat Selesai.`;
+    if (activeTab === 'hd_dose') summaryText += `Evaluasi: Penyesuaian Dosis Pasien Hemodialisis (HD) Selesai.`;
+    if (activeTab === 'steroid') summaryText += `Evaluasi: Konversi Dosis Kortikosteroid Equivalen Selesai.`;
     if (activeTab === 'nti') summaryText += `Evaluasi NTI (${ntiSubTab}): Dosis disesuaikan parameter klinis.`;
     if (activeTab === 'tdm_chart') summaryText += `Evaluasi: Pemantauan Grafik Kurva Trend TDM Obat Selesai Di-generate.`;
     if (activeTab === 'ddi') summaryText += `Evaluasi: Interaksi Obat Risiko Tinggi (DDI) Selesai di-screening.`;
@@ -405,15 +475,21 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row font-sans">
+    <div className={`min-h-screen flex flex-col md:flex-row font-sans transition-colors duration-300 ${
+      isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-800'
+    }`}>
       
       {/* MOBILE HEADER */}
-      <div className="md:hidden bg-slate-900 border-b border-slate-800 p-4 flex justify-between items-center sticky top-0 z-50">
+      <div className={`md:hidden p-4 flex justify-between items-center sticky top-0 z-50 border-b ${
+        isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+      }`}>
         <div className="flex items-center gap-2">
           <span className="text-xl">🩺</span>
-          <span className="font-bold text-lg text-blue-400">Clinical Suite</span>
+          <span className="font-bold text-lg text-blue-500">Clinical Suite</span>
         </div>
-        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 bg-slate-800 rounded-lg text-slate-300">
+        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-2 rounded-lg ${
+          isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
+        }`}>
           {isSidebarOpen ? '✖' : '☰'}
         </button>
       </div>
@@ -445,24 +521,32 @@ export default function App() {
           setPatientId={setPatientId}
         />
 
-        <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl shadow-xl mb-8">
-          <div className="mb-6 border-b border-slate-800 pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+        <div className={`p-6 md:p-8 rounded-2xl shadow-xl mb-8 border transition-colors ${
+          isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-slate-200/50'
+        }`}>
+          <div className={`mb-6 border-b pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3 ${
+            isDark ? 'border-slate-800' : 'border-slate-200'
+          }`}>
             <div>
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <h2 className={`text-xl font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 <span>{menuItems.find((m) => m.id === activeTab)?.icon}</span>
                 {menuItems.find((m) => m.id === activeTab)?.name}
               </h2>
-              <p className="text-slate-400 text-xs mt-1">
+              <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Kategori: {menuItems.find((m) => m.id === activeTab)?.category}
               </p>
             </div>
 
             {/* TOMBOL RESET & INFO RUMUS */}
             <div className="flex items-center gap-2">
-              <button onClick={handleResetForm} className="bg-slate-800 text-slate-400 hover:text-white border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all">
+              <button onClick={handleResetForm} className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                isDark ? 'bg-slate-800 text-slate-400 hover:text-white border-slate-700' : 'bg-slate-100 text-slate-600 hover:text-slate-900 border-slate-300'
+              }`}>
                 {t.resetBtn}
               </button>
-              <button onClick={() => setShowInfo(true)} className="bg-slate-800 text-blue-400 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all">
+              <button onClick={() => setShowInfo(true)} className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                isDark ? 'bg-slate-800 text-blue-400 border-slate-700' : 'bg-blue-50 text-blue-600 border-blue-200'
+              }`}>
                 {t.infoBtn}
               </button>
             </div>
@@ -472,22 +556,25 @@ export default function App() {
           {activeTab === 'pk' && (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className="block text-xs text-slate-300 mb-1">Target Conc (mg/L)</label><input type="number" name="targetConc" value={pkInputs.targetConc} onChange={handlePk} placeholder="e.g. 15" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
-                <div><label className="block text-xs text-slate-300 mb-1">Vd (L/kg)</label><input type="number" name="vd" value={pkInputs.vd} onChange={handlePk} placeholder="e.g. 0.7" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
-                <div><label className="block text-xs text-slate-300 mb-1">BB Pasien (kg)</label><input type="number" name="weight" value={pkInputs.weight} onChange={handlePk} placeholder="e.g. 60" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
-                <div><label className="block text-xs text-slate-300 mb-1">Clearance (L/jam)</label><input type="number" name="clearance" value={pkInputs.clearance} onChange={handlePk} placeholder="e.g. 3.0" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
-                <div><label className="block text-xs text-slate-300 mb-1">Interval (Jam)</label><input type="number" name="interval" value={pkInputs.interval} onChange={handlePk} placeholder="e.g. 8" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Target Conc (mg/L)</label><input type="number" name="targetConc" value={pkInputs.targetConc} onChange={handlePk} placeholder="e.g. 15" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Vd (L/kg)</label><input type="number" name="vd" value={pkInputs.vd} onChange={handlePk} placeholder="e.g. 0.7" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={pkInputs.weight} onChange={handlePk} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Clearance (L/jam)</label><input type="number" name="clearance" value={pkInputs.clearance} onChange={handlePk} placeholder="e.g. 3.0" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Interval (Jam)</label><input type="number" name="interval" value={pkInputs.interval} onChange={handlePk} placeholder="e.g. 8" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
               </div>
 
-              <div className="bg-blue-950/40 border border-blue-800/50 p-4 rounded-xl flex justify-between mb-4">
-                <div><span className="text-xs text-blue-400 font-bold block">Loading Dose (LD)</span><span className="text-2xl font-bold text-white">{ld} mg</span></div>
-                <div><span className="text-xs text-blue-400 font-bold block">Maintenance Dose (MD)</span><span className="text-2xl font-bold text-white">{md} mg/{pkInputs.interval || 0}j</span></div>
+              <div className={`p-4 rounded-xl flex justify-between mb-4 border ${
+                isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div><span className="text-xs text-blue-500 font-bold block">Loading Dose (LD)</span><span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ld} mg</span></div>
+                <div><span className="text-xs text-blue-500 font-bold block">Maintenance Dose (MD)</span><span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{md} mg/{pkInputs.interval || 0}j</span></div>
               </div>
 
-              {/* KETERANGAN KLINIS PK */}
-              <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl text-xs space-y-2">
-                <p className="text-slate-300 font-bold">💡 Catatan Klinis Farmakokinetik:</p>
-                <p className="text-slate-400 leading-relaxed">
+              <div className={`p-4 rounded-xl text-xs space-y-2 border ${
+                isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <p className={`font-bold ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>💡 Catatan Klinis Farmakokinetik:</p>
+                <p className={`leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                   • <strong>Loading Dose:</strong> Diberikan 1 kali di awal untuk segera mencapai kadar obat terapeutik plasma tanpa menunggu <i>Steady State</i>.<br />
                   • <strong>Maintenance Dose:</strong> Diberikan secara berkala untuk menggantikan jumlah obat yang dieliminasi oleh tubuh (Clearance).<br />
                   • Keseimbangan kadar konstan (Steady State) umumnya tercapai setelah <strong>4 hingga 5 kali waktu paruh ($t_{1/2}$)</strong> obat.
@@ -499,26 +586,29 @@ export default function App() {
           {activeTab === 'drip' && (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className="block text-xs text-slate-300 mb-1">Dosis Target (mcg/kg/min)</label><input type="number" name="dose" value={dripInputs.dose} onChange={handleDrip} placeholder="e.g. 5" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
-                <div><label className="block text-xs text-slate-300 mb-1">BB Pasien (kg)</label><input type="number" name="weight" value={dripInputs.weight} onChange={handleDrip} placeholder="e.g. 60" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
-                <div><label className="block text-xs text-slate-300 mb-1">Jumlah Obat Dalam Vial/Ampul (mg)</label><input type="number" name="drugMg" value={dripInputs.drugMg} onChange={handleDrip} placeholder="e.g. 250" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
-                <div><label className="block text-xs text-slate-300 mb-1">Volume Pelarut Syringe Pump (mL)</label><input type="number" name="volumeMl" value={dripInputs.volumeMl} onChange={handleDrip} placeholder="e.g. 50" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Dosis Target (mcg/kg/min)</label><input type="number" name="dose" value={dripInputs.dose} onChange={handleDrip} placeholder="e.g. 5" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={dripInputs.weight} onChange={handleDrip} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jumlah Obat Dalam Vial/Ampul (mg)</label><input type="number" name="drugMg" value={dripInputs.drugMg} onChange={handleDrip} placeholder="e.g. 250" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Volume Pelarut Syringe Pump (mL)</label><input type="number" name="volumeMl" value={dripInputs.volumeMl} onChange={handleDrip} placeholder="e.g. 50" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
               </div>
 
-              <div className="bg-blue-950/40 border border-blue-800/50 p-4 rounded-xl text-center mb-4">
-                <span className="text-xs text-blue-400 font-bold block">Kecepatan Syringe Pump / Infusiometer</span>
-                <span className="text-3xl font-extrabold text-white">{drip} mL/jam</span>
+              <div className={`p-4 rounded-xl text-center mb-4 border ${
+                isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
+              }`}>
+                <span className="text-xs text-blue-500 font-bold block">Kecepatan Syringe Pump / Infusiometer</span>
+                <span className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{drip} mL/jam</span>
               </div>
 
-              {/* KETERANGAN & WARNING DRIP */}
-              <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl text-xs space-y-2">
-                <p className="text-slate-300 font-bold">💡 Keterangan & Safety Check Infus Continuous:</p>
-                <p className="text-slate-400 leading-relaxed">
+              <div className={`p-4 rounded-xl text-xs space-y-2 border ${
+                isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <p className={`font-bold ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>💡 Keterangan & Safety Check Infus Continuous:</p>
+                <p className={`leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                   • Rumus dikalibrasi untuk obat inotropik/vasopresor (Dobutamin, Dopamin, Norepinefrin).<br />
                   • Pastikan label konsentrasi spuit terpasang jelas pada alat syringe pump.
                 </p>
                 {drip > 50 && (
-                  <div className="bg-amber-950/60 border border-amber-500/50 p-3 rounded-lg text-amber-300 font-medium">
+                  <div className="bg-amber-500/10 border border-amber-500/40 p-3 rounded-lg text-amber-600 font-medium">
                     ⚠️ <strong>WARNING:</strong> Kecepatan Drip Tinggi ({drip} mL/jam). Pertimbangkan peningkatan konsentrasi obat atau gunakan akses Vena Sentral (CVC)!
                   </div>
                 )}
@@ -529,8 +619,26 @@ export default function App() {
           {/* TAB: PEDIATRIK & GERIATRI */}
           {activeTab === 'peds_geri' && <PedsGeriCalculator />}
 
-          {/* TAB BARU: CETAK ETIKET & RESEP */}
+          {/* TAB: SCREENING STOPP/START */}
+          {activeTab === 'stopp_start' && <StoppStartCalculator />}
+
+          {/* TAB: DOSIS CRRT ICU */}
+          {activeTab === 'crrt' && <CrrtDoseCalculator />}
+
+          {/* TAB: KOREKSI ELEKTROLIT DARURAT */}
+          {activeTab === 'electro' && <ElectrolyteCorrectionCalculator />}
+
+          {/* TAB: EVALUASI ARDS & AGD */}
+          {activeTab === 'ards' && <ArdsCalculator />}
+
+          {/* TAB: CETAK ETIKET & RESEP */}
           {activeTab === 'label_print' && <PrescriptionEtiquetteCalculator />}
+
+          {/* TAB: DOSIS HEMODIALISIS */}
+          {activeTab === 'hd_dose' && <HemodialysisDoseCalculator />}
+
+          {/* TAB: KONVERSI STEROID */}
+          {activeTab === 'steroid' && <SteroidConversionCalculator />}
 
           {activeTab === 'nti' && (
             <NtiCalculator
@@ -563,32 +671,35 @@ export default function App() {
           {activeTab === 'renal' && (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className="block text-xs text-slate-300 mb-1">Usia (Tahun)</label><input type="number" name="age" value={renalInputs.age} onChange={handleRenal} placeholder="e.g. 55" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
-                <div><label className="block text-xs text-slate-300 mb-1">BB Pasien (kg)</label><input type="number" name="weight" value={renalInputs.weight} onChange={handleRenal} placeholder="e.g. 65" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
-                <div><label className="block text-xs text-slate-300 mb-1">Serum Creatinine (mg/dL)</label><input type="number" name="scr" value={renalInputs.scr} onChange={handleRenal} placeholder="e.g. 1.2" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
-                <div><label className="block text-xs text-slate-300 mb-1">Jenis Kelamin</label><select name="gender" value={renalInputs.gender} onChange={handleRenal} className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs"><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Usia (Tahun)</label><input type="number" name="age" value={renalInputs.age} onChange={handleRenal} placeholder="e.g. 55" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={renalInputs.weight} onChange={handleRenal} placeholder="e.g. 65" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Serum Creatinine (mg/dL)</label><input type="number" name="scr" value={renalInputs.scr} onChange={handleRenal} placeholder="e.g. 1.2" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={renalInputs.gender} onChange={handleRenal} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
               </div>
 
-              <div className="bg-blue-950/40 border border-blue-800/50 p-4 rounded-xl flex justify-between mb-4">
-                <div><span className="text-xs text-blue-400 font-bold block">Cockcroft-Gault (ClCr)</span><span className="text-2xl font-bold text-white">{clcr} mL/min</span></div>
-                <div><span className="text-xs text-blue-400 font-bold block">CKD-EPI (eGFR)</span><span className="text-2xl font-bold text-white">{egfr} mL/min/1.73m²</span></div>
+              <div className={`p-4 rounded-xl flex justify-between mb-4 border ${
+                isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div><span className="text-xs text-blue-500 font-bold block">Cockcroft-Gault (ClCr)</span><span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{clcr} mL/min</span></div>
+                <div><span className="text-xs text-blue-500 font-bold block">CKD-EPI (eGFR)</span><span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{egfr} mL/min/1.73m²</span></div>
               </div>
 
-              {/* ALERT FUNGSI GINJAL */}
               {egfr > 0 && egfr < 30 && (
-                <div className="bg-red-950/80 border border-red-500/60 p-4 rounded-xl text-xs text-red-300 mb-2">
+                <div className="bg-red-500/10 border border-red-500/40 p-4 rounded-xl text-xs text-red-600 mb-2">
                   🚨 <strong>ALERT: eGFR &lt; 30 mL/min (CKD Stage 4-5 / Severe):</strong> Risiko tinggi toksisitas obat ginjal! Kurangi dosis Meropenem/Aminoglikosida/Metformin.
                 </div>
               )}
               {egfr >= 30 && egfr < 60 && (
-                <div className="bg-amber-950/60 border border-amber-500/50 p-4 rounded-xl text-xs text-amber-300 mb-2">
+                <div className="bg-amber-500/10 border border-amber-500/40 p-4 rounded-xl text-xs text-amber-600 mb-2">
                   ⚠️ <strong>WARNING: eGFR 30 - 59 mL/min (CKD Stage 3):</strong> Gangguan ginjal moderat. Lakukan penyesuaian dosis beberapa obat.
                 </div>
               )}
 
-              <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl text-xs space-y-1">
-                <p className="text-slate-300 font-bold">💡 Keterangan Klinis KDIGO:</p>
-                <p className="text-slate-400">
+              <div className={`p-4 rounded-xl text-xs space-y-1 border ${
+                isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <p className={`font-bold ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>💡 Keterangan Klinis KDIGO:</p>
+                <p className={`${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                   • <strong>ClCr Cockcroft-Gault:</strong> Digunakan khusus sebagai acuan penyesuaian dosis obat dalam leaflet/FDA.<br />
                   • <strong>CKD-EPI 2021:</strong> Digunakan untuk penentuan derajat/staging Penyakit Ginjal Kronis (PGK).
                 </p>
@@ -596,63 +707,65 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 5: BODY (BSA, BMI, IBW, PARKLAND) */}
+          {/* TAB: BODY */}
           {activeTab === 'anthro' && (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className="block text-xs text-slate-300 mb-1">Tinggi Badan (cm)</label><input type="number" name="height" value={anthroInputs.height} onChange={handleAnthro} placeholder="e.g. 165" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
-                <div><label className="block text-xs text-slate-300 mb-1">BB Pasien (kg)</label><input type="number" name="weight" value={anthroInputs.weight} onChange={handleAnthro} placeholder="e.g. 60" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
-                <div><label className="block text-xs text-slate-300 mb-1">Jenis Kelamin</label><select name="gender" value={anthroInputs.gender} onChange={handleAnthro} className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs"><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
-                <div><label className="block text-xs text-slate-300 mb-1">Luas Luka Bakar / TBSA (%)</label><input type="number" name="tbsaBurn" value={anthroInputs.tbsaBurn} onChange={handleAnthro} placeholder="Opsional, e.g. 25" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Tinggi Badan (cm)</label><input type="number" name="height" value={anthroInputs.height} onChange={handleAnthro} placeholder="e.g. 165" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={anthroInputs.weight} onChange={handleAnthro} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={anthroInputs.gender} onChange={handleAnthro} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Luas Luka Bakar / TBSA (%)</label><input type="number" name="tbsaBurn" value={anthroInputs.tbsaBurn} onChange={handleAnthro} placeholder="Opsional, e.g. 25" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
               </div>
 
-              {/* CARD RINGKASAN HASIL */}
-              <div className="grid grid-cols-3 gap-2 bg-blue-950/40 border border-blue-800/50 p-4 rounded-2xl text-center mb-4">
-                <div><span className="text-xs text-blue-400 font-bold block mb-1">BSA (Luas Permukaan)</span><span className="text-xl font-bold text-white">{bsa} <span className="text-xs font-normal text-slate-400">m²</span></span></div>
-                <div><span className="text-xs text-blue-400 font-bold block mb-1">BMI (Indeks Massa)</span><span className="text-xl font-bold text-white">{bmi} <span className="text-xs font-normal text-slate-400">kg/m²</span></span></div>
-                <div><span className="text-xs text-blue-400 font-bold block mb-1">IBW (BB Ideal)</span><span className="text-xl font-bold text-white">{ibw} <span className="text-xs font-normal text-slate-400">kg</span></span></div>
+              <div className={`grid grid-cols-3 gap-2 p-4 rounded-2xl text-center mb-4 border ${
+                isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div><span className="text-xs text-blue-500 font-bold block mb-1">BSA (Luas Permukaan)</span><span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{bsa} <span className="text-xs font-normal text-slate-400">m²</span></span></div>
+                <div><span className="text-xs text-blue-500 font-bold block mb-1">BMI (Indeks Massa)</span><span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{bmi} <span className="text-xs font-normal text-slate-400">kg/m²</span></span></div>
+                <div><span className="text-xs text-blue-500 font-bold block mb-1">IBW (BB Ideal)</span><span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ibw} <span className="text-xs font-normal text-slate-400">kg</span></span></div>
               </div>
 
-              {/* REKOMENDASI & INTERPRETASI KLINIS BODY */}
               {bmi > 0 && (
-                <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl text-xs space-y-2 mb-4">
-                  <p className="text-slate-300 font-bold">💡 Interpretasi Antropometri Pasien:</p>
-                  <p className="text-slate-300 bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
-                    • <strong>Kategori BMI (Asia Pasifik):</strong> <span className="text-emerald-400 font-bold">{bmiCategory}</span><br />
+                <div className={`p-4 rounded-xl text-xs space-y-2 mb-4 border ${
+                  isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <p className={`font-bold ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>💡 Interpretasi Antropometri Pasien:</p>
+                  <p className={`p-2.5 rounded-lg border ${
+                    isDark ? 'bg-slate-900/80 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
+                  }`}>
+                    • <strong>Kategori BMI (Asia Pasifik):</strong> <span className="text-emerald-500 font-bold">{bmiCategory}</span><br />
                     • <strong>BSA (Body Surface Area):</strong> Digunakan sebagai dasar perhitungan dosis Kemoterapi Sitostatika & Cairan Hemodialisis.<br />
                     • <strong>IBW (Ideal Body Weight):</strong> Digunakan untuk penyesuaian dosis obat hidrofilik (misal: Aminoglikosida, Vancomycin) pada pasien obesitas.
                   </p>
                 </div>
               )}
 
-              {/* CAIRAN PARKLAND */}
               {anthroInputs.tbsaBurn > 0 && (
-                <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl mb-4 space-y-2">
-                  <span className="text-xs font-bold text-amber-400 block">🔥 Resusitasi Cairan Parkland (24 Jam Pertama):</span>
+                <div className={`p-4 rounded-xl mb-4 space-y-2 border ${
+                  isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <span className="text-xs font-bold text-amber-500 block">🔥 Resusitasi Cairan Parkland (24 Jam Pertama):</span>
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800"><p className="text-slate-400 text-[10px]">Total Cairan RL</p><p className="text-lg font-bold text-white">{parkland.totalMl} mL</p></div>
-                    <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800"><p className="text-slate-400 text-[10px]">⏱️ 8 Jam Pertama</p><p className="text-lg font-bold text-amber-300">{parkland.first8} mL</p></div>
-                    <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800"><p className="text-slate-400 text-[10px]">⏱️ 16 Jam Sisa</p><p className="text-lg font-bold text-amber-300">{parkland.next16} mL</p></div>
+                    <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}><p className="text-slate-400 text-[10px]">Total Cairan RL</p><p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{parkland.totalMl} mL</p></div>
+                    <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}><p className="text-slate-400 text-[10px]">⏱️ 8 Jam Pertama</p><p className="text-lg font-bold text-amber-500">{parkland.first8} mL</p></div>
+                    <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}><p className="text-slate-400 text-[10px]">⏱️ 16 Jam Sisa</p><p className="text-lg font-bold text-amber-500">{parkland.next16} mL</p></div>
                   </div>
-                  <p className="text-[11px] text-slate-400 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/80">
-                    💡 <strong>Protokol Resusitasi:</strong> Berikan 50% cairan ({parkland.first8} mL) dalam 8 jam pertama terhitung saat terjadinya trauma luka bakar, dan sisanya 50% ({parkland.next16} mL) diberikan bertahap dalam 16 jam berikutnya.
-                  </p>
                 </div>
               )}
             </div>
           )}
 
-          {/* TAB 6: KALORI HARIAN & DIET PLAN */}
+          {/* TAB: KALORI */}
           {activeTab === 'kalori' && (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className="block text-xs text-slate-300 mb-1">Usia (Tahun)</label><input type="number" name="age" value={tdeeInputs.age} onChange={handleTdee} placeholder="e.g. 24" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
-                <div><label className="block text-xs text-slate-300 mb-1">TB (cm)</label><input type="number" name="height" value={tdeeInputs.height} onChange={handleTdee} placeholder="e.g. 170" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
-                <div><label className="block text-xs text-slate-300 mb-1">BB Pasien (kg)</label><input type="number" name="weight" value={tdeeInputs.weight} onChange={handleTdee} placeholder="e.g. 70" className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs" /></div>
-                <div><label className="block text-xs text-slate-300 mb-1">Jenis Kelamin</label><select name="gender" value={tdeeInputs.gender} onChange={handleTdee} className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs"><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Usia (Tahun)</label><input type="number" name="age" value={tdeeInputs.age} onChange={handleTdee} placeholder="e.g. 24" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>TB (cm)</label><input type="number" name="height" value={tdeeInputs.height} onChange={handleTdee} placeholder="e.g. 170" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={tdeeInputs.weight} onChange={handleTdee} placeholder="e.g. 70" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={tdeeInputs.gender} onChange={handleTdee} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
                 <div>
-                  <label className="block text-xs text-slate-300 mb-1">Tingkat Aktivitas Harian</label>
-                  <select name="activityLevel" value={tdeeInputs.activityLevel} onChange={handleTdee} className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs">
+                  <label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Tingkat Aktivitas Harian</label>
+                  <select name="activityLevel" value={tdeeInputs.activityLevel} onChange={handleTdee} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}>
                     <option value="1.2">Sedentary (Jarang Olahraga / Kerja Duduk)</option>
                     <option value="1.375">Light Activity (Olahraga Ringan 1-3x/minggu)</option>
                     <option value="1.55">Moderate Activity (Olahraga Sedang 3-5x/minggu)</option>
@@ -660,8 +773,8 @@ export default function App() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-300 mb-1">🎯 Target Goal Pasien / User</label>
-                  <select name="goal" value={tdeeInputs.goal} onChange={handleTdee} className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs">
+                  <label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>🎯 Target Goal Pasien / User</label>
+                  <select name="goal" value={tdeeInputs.goal} onChange={handleTdee} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}>
                     <option value="fat_loss">📉 Fat Loss / Diet Defisit (Turun Berat Badan)</option>
                     <option value="maintain">⚖️ Maintenance (Menjaga Berat Badan Saat Ini)</option>
                     <option value="gain">📈 Muscle Gain / Surplus (Menaikkan Berat Badan)</option>
@@ -669,49 +782,52 @@ export default function App() {
                 </div>
               </div>
 
-              {/* SUMMARY HASIL KALORI & MACRO */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-blue-950/40 border border-blue-800/50 p-4 rounded-2xl text-center mb-4">
-                <div><span className="text-[10px] font-bold text-blue-400 block mb-1">BMR (Metabolisme Basal)</span><span className="text-xl font-extrabold text-white">{dietPlan.bmr} <span className="text-xs font-normal text-slate-400">kcal</span></span></div>
-                <div><span className="text-[10px] font-bold text-blue-400 block mb-1">TDEE (Kebutuhan Harian)</span><span className="text-xl font-extrabold text-white">{dietPlan.tdee} <span className="text-xs font-normal text-slate-400">kcal</span></span></div>
-                <div className="bg-emerald-950/60 border border-emerald-500/40 p-2 rounded-xl"><span className="text-[10px] font-bold text-emerald-400 block mb-1">TARGET ASUPAN HARIAN</span><span className="text-2xl font-extrabold text-emerald-300">{dietPlan.targetCal} <span className="text-xs font-normal text-slate-300">kcal</span></span></div>
+              <div className={`grid grid-cols-1 md:grid-cols-3 gap-3 p-4 rounded-2xl text-center mb-4 border ${
+                isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div><span className="text-[10px] font-bold text-blue-500 block mb-1">BMR (Metabolisme Basal)</span><span className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{dietPlan.bmr} <span className="text-xs font-normal text-slate-400">kcal</span></span></div>
+                <div><span className="text-[10px] font-bold text-blue-500 block mb-1">TDEE (Kebutuhan Harian)</span><span className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{dietPlan.tdee} <span className="text-xs font-normal text-slate-400">kcal</span></span></div>
+                <div className="bg-emerald-500/10 border border-emerald-500/30 p-2 rounded-xl"><span className="text-[10px] font-bold text-emerald-500 block mb-1">TARGET ASUPAN HARIAN</span><span className="text-2xl font-extrabold text-emerald-600">{dietPlan.targetCal} <span className="text-xs font-normal">kcal</span></span></div>
               </div>
 
-              {/* REKOMENDASI MAKRONUTRISI HARIAN */}
               {dietPlan.targetCal > 0 && (
-                <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-3 text-xs">
-                  <span className="font-bold text-blue-400 block">📊 Target Makronutrisi Harian:</span>
+                <div className={`p-4 rounded-xl space-y-3 text-xs border ${
+                  isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <span className="font-bold text-blue-500 block">📊 Target Makronutrisi Harian:</span>
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800"><p className="text-slate-400 text-[10px]">🍗 Protein (30%)</p><p className="text-lg font-bold text-amber-400">{dietPlan.protein} g</p></div>
-                    <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800"><p className="text-slate-400 text-[10px]">🍚 Karbohidrat (40%)</p><p className="text-lg font-bold text-blue-400">{dietPlan.carbs} g</p></div>
-                    <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800"><p className="text-slate-400 text-[10px]">🥑 Lemak Sehat (30%)</p><p className="text-lg font-bold text-emerald-400">{dietPlan.fat} g</p></div>
+                    <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}><p className="text-slate-400 text-[10px]">🍗 Protein (30%)</p><p className="text-lg font-bold text-amber-500">{dietPlan.protein} g</p></div>
+                    <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}><p className="text-slate-400 text-[10px]">🍚 Karbohidrat (40%)</p><p className="text-lg font-bold text-blue-500">{dietPlan.carbs} g</p></div>
+                    <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}><p className="text-slate-400 text-[10px]">🥑 Lemak Sehat (30%)</p><p className="text-lg font-bold text-emerald-500">{dietPlan.fat} g</p></div>
                   </div>
-                  <p className="text-[11px] text-slate-300 bg-slate-900/80 p-3 rounded-lg border border-slate-800/80 leading-relaxed">
-                    💡 <strong>Panduan Klinis:</strong> {dietPlan.advice}
-                  </p>
                 </div>
               )}
             </div>
           )}
 
-          {/* ACTION BUTTONS (COPY & PDF) */}
-          <div className="mt-8 border-t border-slate-800 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3">
+          {/* ACTION BUTTONS */}
+          <div className={`mt-8 border-t pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 ${
+            isDark ? 'border-slate-800' : 'border-slate-200'
+          }`}>
             <button
               onClick={handleCopySummary}
-              className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 px-5 rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2 text-xs"
+              className={`w-full sm:w-auto font-bold py-3 px-5 rounded-xl border transition-all flex items-center justify-center gap-2 text-xs ${
+                isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+              }`}
             >
               {copySuccess ? t.copiedBtn : t.copySaveBtn}
             </button>
 
             <button
               onClick={handleDownloadPDF}
-              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-emerald-900/20 transition-all flex items-center justify-center gap-2 text-xs"
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-xs"
             >
               {t.downloadPdfBtn}
             </button>
           </div>
         </div>
 
-        {/* COMPONENT HISTORY LOG */}
+        {/* HISTORY LOG */}
         <HistoryLog
           history={history}
           handleClearHistory={handleClearHistory}
@@ -719,33 +835,39 @@ export default function App() {
         />
       </main>
 
-      {/* MODAL POPUP INFO RUMUS MEDIS */}
+      {/* MODAL POPUP INFO RUMUS */}
       {showInfo && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl max-w-md w-full shadow-2xl relative">
+          <div className={`border p-6 rounded-2xl max-w-md w-full shadow-2xl relative ${
+            isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'
+          }`}>
             <button
               onClick={() => setShowInfo(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white text-lg font-bold"
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold"
             >
               ✖
             </button>
             
-            <div className="flex items-center gap-2 mb-4 text-blue-400">
+            <div className="flex items-center gap-2 mb-4 text-blue-500">
               <span className="text-2xl">📖</span>
-              <h3 className="font-bold text-base text-white">{formulaInfo[activeTab].title}</h3>
+              <h3 className={`font-bold text-base ${isDark ? 'text-white' : 'text-slate-900'}`}>{formulaInfo[activeTab].title}</h3>
             </div>
 
             <div className="space-y-4 text-xs">
               <div>
                 <span className="text-slate-400 font-bold block mb-1">FORMULA / RUMUS:</span>
-                <pre className="bg-slate-950 p-3 rounded-xl text-emerald-400 font-mono text-[11px] overflow-x-auto whitespace-pre-wrap">
+                <pre className={`p-3 rounded-xl font-mono text-[11px] overflow-x-auto whitespace-pre-wrap ${
+                  isDark ? 'bg-slate-950 text-emerald-400' : 'bg-slate-100 text-emerald-700'
+                }`}>
                   {formulaInfo[activeTab].formula}
                 </pre>
               </div>
 
               <div>
                 <span className="text-slate-400 font-bold block mb-1">GUIDELINE & CATATAN KLINIS:</span>
-                <p className="text-slate-300 leading-relaxed bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+                <p className={`leading-relaxed p-3 rounded-xl border ${
+                  isDark ? 'bg-slate-950/60 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+                }`}>
                   {formulaInfo[activeTab].guideline}
                 </p>
               </div>
@@ -761,25 +883,15 @@ export default function App() {
         </div>
       )}
 
-      {/* TEMPLATE PDF LENGKAP DENGAN KOP SURAT DINAMIS */}
+      {/* TEMPLATE PDF (SELALU WHITE BAGI PRINTING) */}
       <div id="pdf-template" style={{ display: 'none' }} className="p-8 bg-white text-black font-sans text-xs">
-        
-        {/* KOP SURAT RUMAH SAKIT DINAMIS */}
         <div style={{ borderBottom: '3px double #000', paddingBottom: '12px', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '15px' }}>
-            
-            {/* LOGO RS (JIKA ADA) */}
+          <div style={{ display: 'flex', itemsCenter: 'center', justifyContent: 'space-between', gap: '15px' }}>
             {hospitalInfo.logoUrl ? (
-              <img
-                src={hospitalInfo.logoUrl}
-                alt="Logo RS"
-                style={{ maxHeight: '60px', maxWidth: '90px', objectFit: 'contain' }}
-              />
+              <img src={hospitalInfo.logoUrl} alt="Logo RS" style={{ maxHeight: '60px', maxWidth: '90px', objectFit: 'contain' }} />
             ) : (
               <div style={{ fontSize: '28px' }}>🩺</div>
             )}
-
-            {/* HEADER NAMA RS & ALAMAT */}
             <div style={{ flex: 1, textAlign: 'center' }}>
               <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0, textTransform: 'uppercase', color: '#0f172a' }}>
                 {hospitalInfo.name || 'CLINICAL SUITE MEDICAL CENTER'}
@@ -788,7 +900,6 @@ export default function App() {
                 {hospitalInfo.address || 'Sistem Pelayanan Evaluasi Farmasi & Dosis Klinis Pasien'}
               </p>
             </div>
-
             <div style={{ textAlign: 'right', fontSize: '9px', color: '#475569', minWidth: '100px' }}>
               <p style={{ margin: 0 }}>Tanggal: <strong>{new Date().toLocaleDateString('id-ID')}</strong></p>
               <p style={{ margin: 0 }}>Dokumen Resmi</p>
@@ -796,7 +907,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* IDENTITAS PASIEN */}
         <div style={{ marginBottom: '20px' }}>
           <h3 style={{ fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '8px', color: '#0f172a' }}>1. {t.patientIdent}</h3>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -811,10 +921,9 @@ export default function App() {
           </table>
         </div>
 
-        {/* HASIL EVALUASI */}
         <div style={{ marginBottom: '20px' }}>
           <h3 style={{ fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '8px', color: '#0f172a' }}>
-            2. {t.evalTitle} ({activeTab === 'pk' ? 'FARMAKOKINETIK DOSIS' : activeTab === 'drip' ? 'DOSIS DRIP / SYRINGE PUMP' : activeTab === 'peds_geri' ? 'DOSIS PEDIATRIK & BEERS CRITERIA GERIATRI' : activeTab === 'label_print' ? 'ETIKET & RESEP OBAT' : activeTab === 'nti' ? `KOREKSI OBAT NTI (${ntiSubTab.toUpperCase()})` : activeTab === 'tdm_chart' ? 'GRAFIK MONITORING TDM' : activeTab === 'ddi' ? 'INTERAKSI OBAT (DDI SCREENING)' : activeTab === 'renal' ? 'EVALUASI FUNGSI GINJAL' : activeTab === 'anthro' ? 'ANTROPOMETRI & RESUSITASI' : 'KEBUTUHAN KALORI & DIET'})
+            2. {t.evalTitle} ({activeTab.toUpperCase()})
           </h3>
 
           <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #cbd5e1' }}>
@@ -829,121 +938,13 @@ export default function App() {
               {activeTab === 'pk' && (
                 <>
                   <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Target Concentration</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{pkInputs.targetConc || '-'}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>mg/L</td></tr>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Clearance / Volume Dst</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{pkInputs.clearance || '-'} / {pkInputs.vd || '-'}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>L/jam | L/kg</td></tr>
                   <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>RECOMMENDED LOADING DOSE</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '14px', color: '#1e40af' }}>{ld}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>mg</td></tr>
-                  <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>MAINTENANCE DOSE</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '14px', color: '#1e40af' }}>{md}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>mg / {pkInputs.interval || 0} jam</td></tr>
-                </>
-              )}
-
-              {activeTab === 'drip' && (
-                <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Dosis Target & BB Pasien</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{dripInputs.dose || '-'} mcg/kg/min</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>BB: {dripInputs.weight || '-'} kg</td></tr>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Konsentrasi Obat</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{dripInputs.drugMg || '-'} mg dalam {dripInputs.volumeMl || '-'} mL</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Cairan Infus</td></tr>
-                  <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>KECEPATAN SYRINGE PUMP</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '14px', color: '#1e40af' }}>{drip}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>mL/jam</td></tr>
-                </>
-              )}
-
-              {activeTab === 'peds_geri' && (
-                <>
-                  <tr style={{ background: '#f8fafc' }}>
-                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>MODUL PEDIATRIK & GERIATRI</td>
-                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }} colSpan="2">Evaluasi Dosis Anak / Kriteria Beers Lansia Selesai</td>
-                  </tr>
-                </>
-              )}
-
-              {activeTab === 'label_print' && (
-                <>
-                  <tr style={{ background: '#f8fafc' }}>
-                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>MODUL CETAK ETIKET OBAT</td>
-                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }} colSpan="2">Label Etiket Obat Berhasil Di-generate & Siap Cetak</td>
-                  </tr>
-                </>
-              )}
-
-              {activeTab === 'nti' && (
-                <>
-                  {ntiSubTab === 'phenytoin' && (
-                    <>
-                      <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Observed Phenytoin / Albumin</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{ntiPhenytoin.phenytoinObs || '-'} mcg/mL / {ntiPhenytoin.albumin || '-'} g/dL</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Serum Pasien</td></tr>
-                      <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>ADJUSTED PHENYTOIN (WINTER-TOZER)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '14px', color: '#1e40af' }}>{phenytoinAdj}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>mcg/mL (Target: 10-20)</td></tr>
-                    </>
-                  )}
-                  {ntiSubTab === 'vanco' && (
-                    <>
-                      <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Dosis Harian & Scr Pasien</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{ntiVanco.dailyDoseMg || '-'} mg/24j / Scr: {ntiVanco.scr || '-'} mg/dL</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Vancomycin IV</td></tr>
-                      <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>ESTIMATED AUC24 / MIC RATIO</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '14px', color: '#1e40af' }}>{vancoAuc}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>mg·hr/L (Target: 400-600)</td></tr>
-                    </>
-                  )}
-                  {ntiSubTab === 'theo' && (
-                    <>
-                      <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Kadar Observed / Dosis Lama</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{ntiTheo.currentLevel || '-'} mcg/mL / {ntiTheo.currentDoseMg || '-'} mg/hari</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Teofilin Serum</td></tr>
-                      <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>RECOMMENDED NEW DOSE</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '14px', color: '#1e40af' }}>{theoDoseRec}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>mg/hari (Target: 10-15)</td></tr>
-                    </>
-                  )}
-                  {ntiSubTab === 'warfarin' && (
-                    <>
-                      <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Nilai INR Pasien Terukur</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{ntiWarfarin.currentInr || '-'}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Status: {warfarinRec.status}</td></tr>
-                      <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>TINDAKAN KLINIS (CHEST GUIDELINE)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }} colSpan="2">{warfarinRec.action}</td></tr>
-                    </>
-                  )}
-                  {ntiSubTab === 'amino' && (
-                    <>
-                      <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Jenis Aminoglikosida & Berat Pengujung</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{ntiAmino.drugType.toUpperCase()} / {aminoDose.weightLabel} ({aminoDose.dosingWeightMg} kg)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Serum Pasien</td></tr>
-                      <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>RECOMMENDED EXTENDED DOSE</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '14px', color: '#1e40af' }}>{aminoDose.doseMg} mg / {aminoDose.interval}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>IV Infus</td></tr>
-                    </>
-                  )}
-                </>
-              )}
-
-              {activeTab === 'tdm_chart' && (
-                <>
-                  <tr style={{ background: '#f8fafc' }}>
-                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>MODUL TDM TREND MONITORING</td>
-                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }} colSpan="2">Plotting Line Chart Time-Series Selesai</td>
-                  </tr>
-                </>
-              )}
-
-              {activeTab === 'ddi' && (
-                <>
-                  <tr style={{ background: '#f8fafc' }}>
-                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>MODUL SCREENING INTERAKSI OBAT</td>
-                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }} colSpan="2">Evaluasi Matriks DDI High-Risk Aktif</td>
-                  </tr>
-                </>
-              )}
-
-              {activeTab === 'renal' && (
-                <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Usia / BB / Scr Pasien</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>{renalInputs.age || '-'} thn / {renalInputs.weight || '-'} kg / {renalInputs.scr || '-'} mg/dL</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>{renalInputs.gender === 'male' ? 'Laki-laki' : 'Perempuan'}</td></tr>
-                  <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>Cockcroft-Gault (ClCr)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '13px', color: '#0f766e' }}>{clcr}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>mL/menit</td></tr>
-                  <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>eGFR (CKD-EPI 2021)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '13px', color: '#0f766e' }}>{egfr}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>mL/min/1.73m²</td></tr>
-                </>
-              )}
-
-              {activeTab === 'anthro' && (
-                <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>BSA (Mosteller)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{bsa}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>m²</td></tr>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>BMI / Kategori / IBW</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{bmi} kg/m² ({bmiCategory}) / IBW: {ibw} kg</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Status Gizi Pasien</td></tr>
-                  {anthroInputs.tbsaBurn > 0 && (
-                    <tr style={{ background: '#fff7ed' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#c2410c' }}>Resusitasi Parkland (RL)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#c2410c' }}>Total: {parkland.totalMl} mL</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>8j I: {parkland.first8} mL | 16j Sisa: {parkland.next16} mL</td></tr>
-                  )}
-                </>
-              )}
-
-              {activeTab === 'kalori' && (
-                <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>BMR / TDEE Harian</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>{dietPlan.bmr} / {dietPlan.tdee}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>kcal/hari</td></tr>
-                  <tr style={{ background: '#f0fdf4' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#15803d' }}>TARGET ASUPAN ({tdeeInputs.goal.toUpperCase()})</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '14px', color: '#15803d' }}>{dietPlan.targetCal}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#15803d' }}>kcal/hari</td></tr>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Makronutrisi (P / C / F)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{dietPlan.protein}g / {dietPlan.carbs}g / {dietPlan.fat}g</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Protein / Karbo / Lemak</td></tr>
                 </>
               )}
             </tbody>
           </table>
         </div>
 
-        {/* SECTION ALERT & PERINGATAN KLINIS KHUSUS PDF */}
         {pdfAlert.isAlert && (
           <div style={{ marginBottom: '20px', padding: '10px 12px', background: '#fef2f2', border: '1.5px solid #ef4444', borderRadius: '6px', color: '#991b1b', fontSize: '10px' }}>
             <strong style={{ display: 'block', marginBottom: '2px', fontSize: '11px' }}>{t.safetyAlertHeader}</strong>
@@ -952,7 +953,7 @@ export default function App() {
         )}
 
         <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <div style={{ width: '55%', fontSize: '9px', color: '#64748b', fontStyle: 'italic', border: '1px border #e2e8f0', padding: '6px' }}>
+          <div style={{ width: '55%', fontSize: '9px', color: '#64748b', fontStyle: 'italic' }}>
             {t.pdfNote}
           </div>
           <div style={{ textTransform: 'uppercase', textAlign: 'center', width: '35%' }}>
@@ -961,7 +962,6 @@ export default function App() {
             <p style={{ margin: 0, borderTop: '1px solid #000', fontWeight: 'bold', paddingTop: '2px' }}>( ________________________ )</p>
           </div>
         </div>
-
       </div>
 
     </div>
