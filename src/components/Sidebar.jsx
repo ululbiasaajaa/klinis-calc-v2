@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Sidebar({
   menuItems,
@@ -9,81 +10,95 @@ export default function Sidebar({
   isSidebarOpen,
   setIsSidebarOpen,
 }) {
-  const filteredMenu = menuItems.filter(
-    (item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchQuery.toLowerCase())
+  const { lang, toggleLang, t } = useLanguage();
+
+  const filteredItems = menuItems.filter((item) =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // MAPPING LABEL DARI TRANSLATION BERSAHAJA
+  const labelMap = {
+    pk: t.navPk,
+    drip: t.navDrip,
+    peds_geri: t.navPedsGeri,
+    label_print: t.navLabelPrint,
+    nti: t.navNti,
+    tdm_chart: t.navTdmChart,
+    ddi: t.navDdi,
+    renal: t.navRenal,
+    anthro: t.navAnthro,
+    kalori: t.navKalori,
+  };
 
   return (
     <aside
-      className={`fixed md:static top-0 left-0 h-full w-72 bg-slate-900 border-r border-slate-800/80 p-5 flex flex-col justify-between z-40 transition-transform duration-300 overflow-y-auto ${
+      className={`fixed md:static inset-y-0 left-0 z-40 w-64 bg-slate-900 border-r border-slate-800 p-4 transform transition-transform duration-300 ease-in-out flex flex-col justify-between ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       }`}
     >
       <div>
-        <div className="hidden md:flex items-center gap-3 mb-6 px-2">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-blue-500/20">
-            🩺
+        {/* LOGO BRAND + TOGGLE LANG */}
+        <div className="flex justify-between items-center mb-6 px-2">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🩺</span>
+            <div>
+              <h1 className="font-bold text-base text-white leading-tight">Clinical Suite</h1>
+              <span className="text-[10px] text-blue-400 font-semibold">v2.5 Professional</span>
+            </div>
           </div>
-          <div>
-            <h1 className="font-extrabold text-slate-100 text-lg leading-tight">Clinical Suite</h1>
-            <span className="text-[10px] bg-emerald-500/10 text-emerald-400 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/20">
-              v2.2 Clean Modular
-            </span>
-          </div>
+
+          {/* LANGUAGE SWITCHER BUTTON */}
+          <button
+            onClick={toggleLang}
+            className="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-200 transition-all flex items-center gap-1 shadow-sm"
+            title="Switch Language / Ganti Bahasa"
+          >
+            <span>{lang === 'id' ? '🇮🇩 ID' : '🇬🇧 EN'}</span>
+          </button>
         </div>
 
-        <div className="relative mb-5">
+        {/* SEARCH BAR */}
+        <div className="mb-4">
           <input
             type="text"
-            placeholder="🔍 Cari kalkulator / obat..."
+            placeholder={lang === 'id' ? "🔍 Cari kalkulator..." : "🔍 Search calculator..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-blue-500 transition-all"
+            className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white outline-none focus:border-blue-500"
           />
         </div>
 
-        <div className="space-y-1">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mb-2 block">
-            NAVIGASI KALKULATOR
-          </span>
-          {filteredMenu.length > 0 ? (
-            filteredMenu.map((item) => (
+        {/* MENU LIST */}
+        <nav className="space-y-1">
+          {filteredItems.map((item) => {
+            const isActive = activeTab === item.id;
+            return (
               <button
                 key={item.id}
                 onClick={() => {
                   setActiveTab(item.id);
                   setIsSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all ${
-                  activeTab === item.id
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                className={`w-full p-2.5 rounded-xl text-left text-xs font-semibold transition-all flex items-center justify-between ${
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
+                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                 }`}
               >
-                <span className="text-base">{item.icon}</span>
-                <div className="text-left">
-                  <p className="leading-none">{item.name}</p>
-                  <span
-                    className={`text-[9px] block mt-1 ${
-                      activeTab === item.id ? 'text-blue-200' : 'text-slate-500'
-                    }`}
-                  >
-                    {item.category}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <span>{item.icon}</span>
+                  <span>{labelMap[item.id] || item.name}</span>
                 </div>
+                {isActive && <span className="text-[10px]">●</span>}
               </button>
-            ))
-          ) : (
-            <p className="text-xs text-slate-500 p-3 text-center">Kalkulator tidak ditemukan...</p>
-          )}
-        </div>
+            );
+          })}
+        </nav>
       </div>
 
-      <div className="pt-4 border-t border-slate-800/80 text-[11px] text-slate-500 text-center">
-        <p>© 2026 Clinical Suite</p>
-        <p className="text-[9px] text-slate-600 mt-0.5">Ready for Clinical Practice</p>
+      <div className="border-t border-slate-800 pt-3 mt-4 text-[11px] text-slate-500 text-center">
+        Clinical Decision Support System
       </div>
     </aside>
   );

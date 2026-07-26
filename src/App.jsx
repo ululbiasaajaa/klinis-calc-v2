@@ -3,10 +3,17 @@ import html2pdf from 'html2pdf.js';
 
 import Sidebar from './components/Sidebar';
 import PatientHeader from './components/PatientHeader';
+import HospitalHeader from './components/HospitalHeader';
 import HistoryLog from './components/HistoryLog';
 import NtiCalculator from './calculators/NtiCalculator';
+import DdiCalculator from './calculators/DdiCalculator';
+import TdmChartCalculator from './calculators/TdmChartCalculator';
+import PedsGeriCalculator from './calculators/PedsGeriCalculator';
+import PrescriptionEtiquetteCalculator from './calculators/PrescriptionEtiquetteCalculator'; // Import Komponen Etiket
+import { useLanguage } from './context/LanguageContext';
 
 export default function App() {
+  const { lang, t } = useLanguage();
   const [activeTab, setActiveTab] = useState('pk');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -15,6 +22,20 @@ export default function App() {
 
   const [patientName, setPatientName] = useState('');
   const [patientId, setPatientId] = useState('');
+
+  // State Kop Surat RS
+  const [hospitalInfo, setHospitalInfo] = useState(() => {
+    const saved = localStorage.getItem('clinical_suite_hospital');
+    return saved ? JSON.parse(saved) : {
+      name: 'RUMAH SAKIT UMUM CLINICAL SUITE',
+      address: 'Jl. Pelayanan Kesehatan No. 1, Jakarta • Telp: (021) 555-0199',
+      logoUrl: ''
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('clinical_suite_hospital', JSON.stringify(hospitalInfo));
+  }, [hospitalInfo]);
 
   // History State
   const [history, setHistory] = useState(() => {
@@ -69,11 +90,15 @@ export default function App() {
     if (window.confirm('Hapus seluruh riwayat hitungan?')) setHistory([]);
   };
 
-  // Menu Config
+  // Menu Config dengan Tambahan Menu Label/Etiket
   const menuItems = [
     { id: 'pk', name: 'Dosis PK (Farmakokinetik)', category: 'Dosis & Obat', icon: '💊' },
     { id: 'drip', name: 'Dosis Drip / Syringe Pump', category: 'Dosis & Obat', icon: '💉' },
+    { id: 'peds_geri', name: 'Pediatrik & Geriatri', category: 'Dosis & Obat', icon: '👶' },
+    { id: 'label_print', name: 'Cetak Etiket & Resep Obat', category: 'Dosis & Obat', icon: '🖨️' },
     { id: 'nti', name: 'Obat Terapi Sempit (NTI / TDM)', category: 'Dosis & Obat', icon: '⚡' },
+    { id: 'tdm_chart', name: 'Grafik Trend Monitoring TDM', category: 'Dosis & Obat', icon: '📊' },
+    { id: 'ddi', name: 'Cek Interaksi Obat (DDI High-Risk)', category: 'Dosis & Obat', icon: '⚠️' },
     { id: 'renal', name: 'Fungsi Ginjal (ClCr & eGFR)', category: 'Organ & Fungsi', icon: '🫘' },
     { id: 'anthro', name: 'Body (BSA, BMI, Parkland)', category: 'Fisiologi & Cairan', icon: '📐' },
     { id: 'kalori', name: 'Kalori Harian & Diet Plan', category: 'Nutrisi & Energi', icon: '🔥' },
@@ -91,10 +116,30 @@ export default function App() {
       formula: 'Konsentrasi = (Mg Obat × 1000) / Vol Cairan (mcg/mL)\nKecepatan (mL/jam) = (Dosis × BB × 60) / Konsentrasi',
       guideline: 'Standar perhitungan kecepatan syringe pump / infusion pump untuk obat inotropik, vasoaktif, dan vasopresor (misal: Dobutamin, Dopamin, Norepinefrin).'
     },
+    peds_geri: {
+      title: 'Kalkulasi Pediatrik & Beers Criteria Geriatri',
+      formula: 'Dosis Anak = BB (kg) × Dosis Target (mg/kg/hari)\nBSA Mosteller = √[(TB × BB) / 3600]',
+      guideline: 'Dosis anak tidak boleh melebihi batas dosis harian maksimal dewasa. Kriteria Beers digunakan untuk mencegah pemberian Potentially Inappropriate Medications (PIM) pada lansia.'
+    },
+    label_print: {
+      title: 'Generator Label Etiket Obat Standar Kemenkes',
+      formula: 'Aturan Pakai (Signa) + Penentuan Jalur Obat (Etiket Putih Oral vs Etiket Biru Topikal)',
+      guideline: 'Etiket Obat berfungsi sebagai petunjuk resmi aturan pakai bagi pasien. Etiket putih digunakan khusus obat oral/ditelan, sedangkan etiket biru untuk obat pemakaian luar.'
+    },
     nti: {
       title: 'Obat Indeks Terapi Sempit (TDM / NTI)',
       formula: '1. Phenytoin: C_adj = C_obs / [(0.2 × Alb) + 0.1]\n2. Warfarin: Protokol Evaluasi INR Chest Guideline\n3. Amikasin/Gentamisin: Dosis Didasarkan ABW (Jika Obesitas) + Penyesuaian ClCr',
       guideline: 'Obat NTI memiliki rentang dosis aman yang sangat sempit. Pemantauan Kadar Obat/INR wajib dilakukan untuk mencegah reaksi perdarahan, kejang, ototoksisitas, atau nefrotoksisitas fatal.'
+    },
+    tdm_chart: {
+      title: 'Pemantauan Kurva Trend Kadar Obat Dalam Serum (TDM)',
+      formula: 'Plotting Time-Series Sampling vs Rentang Terapeutik Target (Min & Max Target)',
+      guideline: 'Digunakan untuk memantau akumulasi obat atau penurunan kadar obat pasien dari waktu ke waktu guna memastikan kadar obat selalu berada di dalam jendela terapeutik (Therapeutic Window).'
+    },
+    ddi: {
+      title: 'Screening Interaksi Obat Risiko Tinggi (Drug-Drug Interaction)',
+      formula: 'Database Matriks Pasangan Obat Terpilih vs Profil Interaksi Klinis (Major/Moderate)',
+      guideline: 'Dilakukan untuk mendeteksi potensi efek samping fatal akibat interaksi farmakokinetik (sistem enzim CYP450/transporter) maupun farmakodinamik (efek aditif/antagonis).'
     },
     renal: {
       title: 'Estimasi Fungsi Ginjal (ClCr & eGFR)',
@@ -272,6 +317,12 @@ export default function App() {
     if (activeTab === 'drip' && drip > 50) {
       return { isAlert: true, text: `⚠️ WARNING: Kecepatan Drip Tinggi (${drip} mL/jam). Pertimbangkan peningkatan konsentrasi atau pergunakan Vena Sentral (CVC)!` };
     }
+    if (activeTab === 'peds_geri') {
+      return { isAlert: true, text: '👶/👵 EVALUASI PEDIATRIK/GERIATRI: Pastikan dosis penyesuaian tidak melebihi batas aman maksimal dewasa atau kriteria Beers.' };
+    }
+    if (activeTab === 'label_print') {
+      return { isAlert: true, text: '🖨️ ETIKET OBAT: Pastikan informasi aturan pakai (signa) dan jenis etiket (putih/biru) sudah sesuai dengan resep dokter.' };
+    }
     if (activeTab === 'renal' && egfr > 0 && egfr < 30) {
       return { isAlert: true, text: '🚨 ALERT: eGFR < 30 mL/min (CKD Stage 4-5 Severe). Wajib lakukan penyesuaian/penurunan dosis obat ginjal!' };
     }
@@ -284,6 +335,12 @@ export default function App() {
       if (ntiSubTab === 'vanco' && vancoAuc > 0 && vancoAuc < 400) return { isAlert: true, text: '⚠️ WARNING: AUC24/MIC < 400 mg·hr/L. Sub-terapeutuik untuk infeksi MRSA.' };
       if (ntiSubTab === 'vanco' && vancoAuc > 600) return { isAlert: true, text: '🚨 ALERT: AUC24/MIC > 600 mg·hr/L. Risiko Gagal Ginjal Akut (AKI) meningkat signifikan!' };
       if (ntiSubTab === 'warfarin' && parseFloat(ntiWarfarin.currentInr) > 4.5) return { isAlert: true, text: `🚨 ALERT WARFARIN: ${warfarinRec.status} -> ${warfarinRec.action}` };
+    }
+    if (activeTab === 'tdm_chart') {
+      return { isAlert: true, text: '📊 INFORMASI: Lakukan evaluasi kurva trend kadar obat pasien secara berkala untuk menjaga efikasi terapi.' };
+    }
+    if (activeTab === 'ddi') {
+      return { isAlert: true, text: '⚠️ PERHATIAN: Lakukan penyesuaian/monitoring dosis apabila terdeteksi interaksi obat berisiko Major/Moderate.' };
     }
     return { isAlert: false, text: '' };
   };
@@ -310,7 +367,11 @@ export default function App() {
 
     if (activeTab === 'pk') summaryText += `Evaluasi: Dosis PK\n- Loading Dose: ${ld} mg\n- Maintenance Dose: ${md} mg / ${pkInputs.interval || 0}j`;
     if (activeTab === 'drip') summaryText += `Evaluasi: Dosis Drip Syringe Pump\n- Kecepatan Infus: ${drip} mL/jam`;
+    if (activeTab === 'peds_geri') summaryText += `Evaluasi: Dosis Pediatrik / Screening Beers Criteria Geriatri Selesai.`;
+    if (activeTab === 'label_print') summaryText += `Evaluasi: Pembuatan Etiket & Label Obat Selesai.`;
     if (activeTab === 'nti') summaryText += `Evaluasi NTI (${ntiSubTab}): Dosis disesuaikan parameter klinis.`;
+    if (activeTab === 'tdm_chart') summaryText += `Evaluasi: Pemantauan Grafik Kurva Trend TDM Obat Selesai Di-generate.`;
+    if (activeTab === 'ddi') summaryText += `Evaluasi: Interaksi Obat Risiko Tinggi (DDI) Selesai di-screening.`;
     if (activeTab === 'renal') summaryText += `Evaluasi: Fungsi Ginjal\n- ClCr: ${clcr} mL/min\n- eGFR: ${egfr} mL/min/1.73m²`;
     if (activeTab === 'anthro') summaryText += `Evaluasi: Antropometri\n- BSA: ${bsa} m² | BMI: ${bmi} kg/m² (${bmiCategory}) | IBW: ${ibw} kg`;
     if (activeTab === 'kalori') summaryText += `Evaluasi: Diet Kalori (${tdeeInputs.goal.toUpperCase()})\n- TDEE: ${dietPlan.tdee} kcal\n- Target Harian: ${dietPlan.targetCal} kcal/hari\n- Macro: Protein ${dietPlan.protein}g | Carbs ${dietPlan.carbs}g | Fat ${dietPlan.fat}g`;
@@ -370,6 +431,13 @@ export default function App() {
 
       {/* MAIN AREA */}
       <main className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full">
+        {/* COMPONENT PENGATURAN KOP SURAT RS */}
+        <HospitalHeader
+          hospitalInfo={hospitalInfo}
+          setHospitalInfo={setHospitalInfo}
+        />
+
+        {/* COMPONENT INPUT PASIEN */}
         <PatientHeader
           patientName={patientName}
           setPatientName={setPatientName}
@@ -392,10 +460,10 @@ export default function App() {
             {/* TOMBOL RESET & INFO RUMUS */}
             <div className="flex items-center gap-2">
               <button onClick={handleResetForm} className="bg-slate-800 text-slate-400 hover:text-white border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all">
-                🧹 Reset
+                {t.resetBtn}
               </button>
               <button onClick={() => setShowInfo(true)} className="bg-slate-800 text-blue-400 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all">
-                ℹ️ Info
+                {t.infoBtn}
               </button>
             </div>
           </div>
@@ -458,6 +526,12 @@ export default function App() {
             </div>
           )}
 
+          {/* TAB: PEDIATRIK & GERIATRI */}
+          {activeTab === 'peds_geri' && <PedsGeriCalculator />}
+
+          {/* TAB BARU: CETAK ETIKET & RESEP */}
+          {activeTab === 'label_print' && <PrescriptionEtiquetteCalculator />}
+
           {activeTab === 'nti' && (
             <NtiCalculator
               ntiSubTab={ntiSubTab}
@@ -479,6 +553,12 @@ export default function App() {
               aminoDose={aminoDose}
             />
           )}
+
+          {/* TAB: TDM TREND CHART */}
+          {activeTab === 'tdm_chart' && <TdmChartCalculator />}
+
+          {/* TAB: CEK INTERAKSI OBAT (DDI) */}
+          {activeTab === 'ddi' && <DdiCalculator />}
 
           {activeTab === 'renal' && (
             <div>
@@ -619,19 +699,24 @@ export default function App() {
               onClick={handleCopySummary}
               className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 px-5 rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2 text-xs"
             >
-              {copySuccess ? '✅ Disalin & Disimpan!' : '📋 Salin & Simpan Riwayat'}
+              {copySuccess ? t.copiedBtn : t.copySaveBtn}
             </button>
 
             <button
               onClick={handleDownloadPDF}
               className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-emerald-900/20 transition-all flex items-center justify-center gap-2 text-xs"
             >
-              📄 Cetak / Download Laporan PDF (Resmi)
+              {t.downloadPdfBtn}
             </button>
           </div>
         </div>
 
-        <HistoryLog history={history} handleClearHistory={handleClearHistory} />
+        {/* COMPONENT HISTORY LOG */}
+        <HistoryLog
+          history={history}
+          handleClearHistory={handleClearHistory}
+          setHistory={setHistory}
+        />
       </main>
 
       {/* MODAL POPUP INFO RUMUS MEDIS */}
@@ -676,46 +761,68 @@ export default function App() {
         </div>
       )}
 
-      {/* TEMPLATE PDF LENGKAP & DINAMIS */}
+      {/* TEMPLATE PDF LENGKAP DENGAN KOP SURAT DINAMIS */}
       <div id="pdf-template" style={{ display: 'none' }} className="p-8 bg-white text-black font-sans text-xs">
-        <div style={{ borderBottom: '2px solid #000', paddingBottom: '10px', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0, color: '#1e3a8a' }}>CLINICAL SUITE MEDICAL REPORT</h1>
-              <p style={{ margin: '2px 0 0 0', color: '#475569', fontSize: '10px' }}>Sistem Kalkulasi Farmasi Klinis & Evaluasi Dosis Pasien</p>
+        
+        {/* KOP SURAT RUMAH SAKIT DINAMIS */}
+        <div style={{ borderBottom: '3px double #000', paddingBottom: '12px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '15px' }}>
+            
+            {/* LOGO RS (JIKA ADA) */}
+            {hospitalInfo.logoUrl ? (
+              <img
+                src={hospitalInfo.logoUrl}
+                alt="Logo RS"
+                style={{ maxHeight: '60px', maxWidth: '90px', objectFit: 'contain' }}
+              />
+            ) : (
+              <div style={{ fontSize: '28px' }}>🩺</div>
+            )}
+
+            {/* HEADER NAMA RS & ALAMAT */}
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0, textTransform: 'uppercase', color: '#0f172a' }}>
+                {hospitalInfo.name || 'CLINICAL SUITE MEDICAL CENTER'}
+              </h1>
+              <p style={{ margin: '3px 0 0 0', color: '#334155', fontSize: '10px' }}>
+                {hospitalInfo.address || 'Sistem Pelayanan Evaluasi Farmasi & Dosis Klinis Pasien'}
+              </p>
             </div>
-            <div style={{ textAlign: 'right', fontSize: '10px', color: '#475569' }}>
+
+            <div style={{ textAlign: 'right', fontSize: '9px', color: '#475569', minWidth: '100px' }}>
               <p style={{ margin: 0 }}>Tanggal: <strong>{new Date().toLocaleDateString('id-ID')}</strong></p>
-              <p style={{ margin: 0 }}>Dokumen Digital Resmi</p>
+              <p style={{ margin: 0 }}>Dokumen Resmi</p>
             </div>
           </div>
         </div>
 
+        {/* IDENTITAS PASIEN */}
         <div style={{ marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '12px', fontWeight: 'bold', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '8px', color: '#0f172a' }}>1. IDENTITAS PASIEN</h3>
+          <h3 style={{ fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '8px', color: '#0f172a' }}>1. {t.patientIdent}</h3>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <tbody>
               <tr>
-                <td style={{ padding: '4px 8px', width: '15%', fontWeight: 'bold', background: '#f1f5f9' }}>Nama Pasien</td>
+                <td style={{ padding: '4px 8px', width: '15%', fontWeight: 'bold', background: '#f1f5f9' }}>{t.patientName}</td>
                 <td style={{ padding: '4px 8px', width: '35%', borderBottom: '1px solid #e2e8f0' }}>{patientName || '-'}</td>
-                <td style={{ padding: '4px 8px', width: '15%', fontWeight: 'bold', background: '#f1f5f9' }}>No. RM</td>
+                <td style={{ padding: '4px 8px', width: '15%', fontWeight: 'bold', background: '#f1f5f9' }}>{t.medicalRecordNo}</td>
                 <td style={{ padding: '4px 8px', width: '35%', borderBottom: '1px solid #e2e8f0' }}>{patientId || '-'}</td>
               </tr>
             </tbody>
           </table>
         </div>
 
+        {/* HASIL EVALUASI */}
         <div style={{ marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '12px', fontWeight: 'bold', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '8px', color: '#0f172a' }}>
-            2. HASIL EVALUASI ({activeTab === 'pk' ? 'FARMAKOKINETIK DOSIS' : activeTab === 'drip' ? 'DOSIS DRIP / SYRINGE PUMP' : activeTab === 'nti' ? `KOREKSI OBAT NTI (${ntiSubTab.toUpperCase()})` : activeTab === 'renal' ? 'EVALUASI FUNGSI GINJAL' : activeTab === 'anthro' ? 'ANTROPOMETRI & RESUSITASI' : 'KEBUTUHAN KALORI & DIET'})
+          <h3 style={{ fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '8px', color: '#0f172a' }}>
+            2. {t.evalTitle} ({activeTab === 'pk' ? 'FARMAKOKINETIK DOSIS' : activeTab === 'drip' ? 'DOSIS DRIP / SYRINGE PUMP' : activeTab === 'peds_geri' ? 'DOSIS PEDIATRIK & BEERS CRITERIA GERIATRI' : activeTab === 'label_print' ? 'ETIKET & RESEP OBAT' : activeTab === 'nti' ? `KOREKSI OBAT NTI (${ntiSubTab.toUpperCase()})` : activeTab === 'tdm_chart' ? 'GRAFIK MONITORING TDM' : activeTab === 'ddi' ? 'INTERAKSI OBAT (DDI SCREENING)' : activeTab === 'renal' ? 'EVALUASI FUNGSI GINJAL' : activeTab === 'anthro' ? 'ANTROPOMETRI & RESUSITASI' : 'KEBUTUHAN KALORI & DIET'})
           </h3>
 
           <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #cbd5e1' }}>
             <thead>
               <tr style={{ background: '#1e293b', color: '#fff', textAlign: 'left' }}>
-                <th style={{ padding: '6px 10px', border: '1px solid #cbd5e1' }}>Parameter Klinis</th>
-                <th style={{ padding: '6px 10px', border: '1px solid #cbd5e1' }}>Nilai / Hasil Hitung</th>
-                <th style={{ padding: '6px 10px', border: '1px solid #cbd5e1' }}>Satuan / Catatan</th>
+                <th style={{ padding: '6px 10px', border: '1px solid #cbd5e1' }}>{t.paramKlinis}</th>
+                <th style={{ padding: '6px 10px', border: '1px solid #cbd5e1' }}>{t.nilaiHasil}</th>
+                <th style={{ padding: '6px 10px', border: '1px solid #cbd5e1' }}>{t.satuanCatatan}</th>
               </tr>
             </thead>
             <tbody>
@@ -733,6 +840,24 @@ export default function App() {
                   <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Dosis Target & BB Pasien</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{dripInputs.dose || '-'} mcg/kg/min</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>BB: {dripInputs.weight || '-'} kg</td></tr>
                   <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Konsentrasi Obat</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{dripInputs.drugMg || '-'} mg dalam {dripInputs.volumeMl || '-'} mL</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Cairan Infus</td></tr>
                   <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>KECEPATAN SYRINGE PUMP</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '14px', color: '#1e40af' }}>{drip}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>mL/jam</td></tr>
+                </>
+              )}
+
+              {activeTab === 'peds_geri' && (
+                <>
+                  <tr style={{ background: '#f8fafc' }}>
+                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>MODUL PEDIATRIK & GERIATRI</td>
+                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }} colSpan="2">Evaluasi Dosis Anak / Kriteria Beers Lansia Selesai</td>
+                  </tr>
+                </>
+              )}
+
+              {activeTab === 'label_print' && (
+                <>
+                  <tr style={{ background: '#f8fafc' }}>
+                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>MODUL CETAK ETIKET OBAT</td>
+                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }} colSpan="2">Label Etiket Obat Berhasil Di-generate & Siap Cetak</td>
+                  </tr>
                 </>
               )}
 
@@ -771,6 +896,24 @@ export default function App() {
                 </>
               )}
 
+              {activeTab === 'tdm_chart' && (
+                <>
+                  <tr style={{ background: '#f8fafc' }}>
+                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>MODUL TDM TREND MONITORING</td>
+                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }} colSpan="2">Plotting Line Chart Time-Series Selesai</td>
+                  </tr>
+                </>
+              )}
+
+              {activeTab === 'ddi' && (
+                <>
+                  <tr style={{ background: '#f8fafc' }}>
+                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>MODUL SCREENING INTERAKSI OBAT</td>
+                    <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }} colSpan="2">Evaluasi Matriks DDI High-Risk Aktif</td>
+                  </tr>
+                </>
+              )}
+
               {activeTab === 'renal' && (
                 <>
                   <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Usia / BB / Scr Pasien</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>{renalInputs.age || '-'} thn / {renalInputs.weight || '-'} kg / {renalInputs.scr || '-'} mg/dL</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>{renalInputs.gender === 'male' ? 'Laki-laki' : 'Perempuan'}</td></tr>
@@ -803,17 +946,17 @@ export default function App() {
         {/* SECTION ALERT & PERINGATAN KLINIS KHUSUS PDF */}
         {pdfAlert.isAlert && (
           <div style={{ marginBottom: '20px', padding: '10px 12px', background: '#fef2f2', border: '1.5px solid #ef4444', borderRadius: '6px', color: '#991b1b', fontSize: '10px' }}>
-            <strong style={{ display: 'block', marginBottom: '2px', fontSize: '11px' }}>PERINGATAN & PERHATIAN KLINIS (SAFETY ALERT):</strong>
+            <strong style={{ display: 'block', marginBottom: '2px', fontSize: '11px' }}>{t.safetyAlertHeader}</strong>
             <span>{pdfAlert.text}</span>
           </div>
         )}
 
         <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div style={{ width: '55%', fontSize: '9px', color: '#64748b', fontStyle: 'italic', border: '1px border #e2e8f0', padding: '6px' }}>
-            *Catatan: Hasil kalkulasi ini merupakan alat bantu keputusan klinis berbasis formula standar farmasi/medis. Keputusan akhir tetap berdasarkan pertimbangan klinis DPJP/Farmasis/Ahli Gizi.
+            {t.pdfNote}
           </div>
           <div style={{ textTransform: 'uppercase', textAlign: 'center', width: '35%' }}>
-            <p style={{ margin: 0, fontSize: '10px' }}>Farmasis / Dokter / Konsultan Gizi</p>
+            <p style={{ margin: 0, fontSize: '10px' }}>{t.pharmacistSign}</p>
             <div style={{ height: '45px' }}></div>
             <p style={{ margin: 0, borderTop: '1px solid #000', fontWeight: 'bold', paddingTop: '2px' }}>( ________________________ )</p>
           </div>

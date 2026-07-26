@@ -1,55 +1,153 @@
-import React from 'react';
+import React, { useRef } from 'react';
 
-export default function HistoryLog({ history, handleClearHistory }) {
+export default function HistoryLog({ history, handleClearHistory, setHistory }) {
+  const fileInputRef = useRef(null);
+
+  // 1. EXPORT TO JSON
+  const handleExportJSON = () => {
+    if (history.length === 0) {
+      alert('Belum ada riwayat kalkulasi untuk di-export!');
+      return;
+    }
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(history, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `Clinical_Suite_History_${new Date().toISOString().slice(0,10)}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  // 2. EXPORT TO CSV (EXCEL FRIENDLY)
+  const handleExportCSV = () => {
+    if (history.length === 0) {
+      alert('Belum ada riwayat kalkulasi untuk di-export!');
+      return;
+    }
+    let csvContent = "data:text/csv;charset=utf-8,ID,Tanggal,Jam,Pasien,No RM,Kategori,Ringkasan\n";
+    history.forEach((row) => {
+      const cleanSummary = `"${row.summary.replace(/"/g, '""').replace(/\n/g, ' | ')}"`;
+      csvContent += `${row.id},${row.date},${row.time},"${row.patient}","${row.rm}","${row.type}",${cleanSummary}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Clinical_Suite_History_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  // 3. IMPORT FROM JSON FILE
+  const handleImportJSON = (e) => {
+    const fileReader = new FileReader();
+    if (e.target.files && e.target.files[0]) {
+      fileReader.readAsText(e.target.files[0], "UTF-8");
+      fileReader.onload = (event) => {
+        try {
+          const parsedData = JSON.parse(event.target.result);
+          if (Array.isArray(parsedData)) {
+            setHistory(parsedData);
+            alert('✅ Berhasil mengimpor riwayat data pasien!');
+          } else {
+            alert('❌ Format file JSON tidak valid!');
+          }
+        } catch (error) {
+          alert('❌ Gagal membaca file JSON!');
+        }
+      };
+    }
+  };
+
   return (
-    <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">📜</span>
-          <h3 className="font-bold text-sm text-slate-200 uppercase tracking-wider">
-            Riwayat Kalkulasi Terakhir (LocalStorage)
+    <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 pb-3 border-b border-slate-800">
+        <div>
+          <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <span>📜</span> Riwayat Kalkulasi Pasien (History Log)
           </h3>
+          <p className="text-slate-400 text-xs mt-0.5">
+            Tersimpan lokal di browser & dapat di-backup / di-restore kapan saja.
+          </p>
         </div>
-        {history.length > 0 && (
+
+        {/* CONTROLS BUTTONS */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Hidden File Input for Import */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImportJSON}
+            accept=".json"
+            className="hidden"
+          />
+
           <button
-            onClick={handleClearHistory}
-            className="text-[11px] text-red-400 hover:text-red-300 font-medium px-2 py-1 rounded bg-red-950/40 border border-red-800/40 transition-all"
+            onClick={() => fileInputRef.current.click()}
+            className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1"
+            title="Upload Backup File JSON"
           >
-            🗑️ Hapus Riwayat
+            <span>📂</span> Import JSON
           </button>
-        )}
+
+          <button
+            onClick={handleExportJSON}
+            className="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1"
+            title="Download Backup JSON"
+          >
+            <span>💾</span> JSON
+          </button>
+
+          <button
+            onClick={handleExportCSV}
+            className="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1"
+            title="Download CSV / Excel"
+          >
+            <span>📊</span> CSV
+          </button>
+
+          {history.length > 0 && (
+            <button
+              onClick={handleClearHistory}
+              className="bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800/60 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+            >
+              🗑️ Hapus
+            </button>
+          )}
+        </div>
       </div>
 
-      {history.length > 0 ? (
+      {/* LIST HISTORY */}
+      {history.length === 0 ? (
+        <div className="text-center py-8 text-xs text-slate-500 bg-slate-950/40 rounded-xl border border-slate-800/60">
+          Belum ada riwayat kalkulasi. Lakukan perhitungan lalu klik tombol <strong>"Salin & Simpan Riwayat"</strong>.
+        </div>
+      ) : (
         <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
           {history.map((item) => (
             <div
               key={item.id}
-              className="bg-slate-950 border border-slate-800/80 p-3.5 rounded-xl text-xs flex flex-col gap-1"
+              className="bg-slate-950 p-4 rounded-xl border border-slate-800 hover:border-slate-700 transition-all text-xs"
             >
-              <div className="flex justify-between items-center border-b border-slate-800/60 pb-2">
+              <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded font-semibold text-[10px] border border-blue-500/30">
-                    {item.type}
+                  <span className="font-bold text-white bg-slate-800 px-2 py-0.5 rounded text-[11px]">
+                    👤 {item.patient}
                   </span>
-                  <span className="font-bold text-slate-200">
-                    Pasien: {item.patient} (RM: {item.rm})
-                  </span>
+                  <span className="text-slate-400 text-[11px]">RM: {item.rm}</span>
                 </div>
-                <span className="text-[10px] text-slate-500">
+                <span className="text-[10px] text-slate-500 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
                   {item.date} • {item.time}
                 </span>
               </div>
-              <pre className="text-[11px] text-slate-400 font-mono whitespace-pre-wrap mt-1">
+
+              <div className="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800/80 text-slate-300 font-mono text-[11px] whitespace-pre-wrap leading-relaxed">
                 {item.summary}
-              </pre>
+              </div>
             </div>
           ))}
         </div>
-      ) : (
-        <p className="text-xs text-slate-500 text-center py-6 bg-slate-950/40 rounded-xl border border-slate-800/40">
-          Belum ada riwayat kalkulasi. Klik "Salin & Simpan Riwayat" atau "Download PDF" di atas untuk merekam hasil hitungan!
-        </p>
       )}
     </div>
   );
