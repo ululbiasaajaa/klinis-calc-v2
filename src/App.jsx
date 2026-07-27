@@ -11,6 +11,11 @@ import PatientDirectoryModal from './components/PatientDirectoryModal';
 import DashboardOverview from './components/DashboardOverview';
 import AuditTrailModal from './components/AuditTrailModal';
 import VoiceAssistantModal from './components/VoiceAssistantModal';
+import ToastAlert from './components/ToastAlert';
+import PatientNotesWidget from './components/PatientNotesWidget';
+import ClinicalSafetyBanner from './components/ClinicalSafetyBanner';
+import DrugScannerModal from './components/DrugScannerModal';
+import ClinicalOutcomeTracker from './components/ClinicalOutcomeTracker'; // <-- IMPORT OUTCOME TRACKER
 
 import NtiCalculator from './calculators/NtiCalculator';
 import DdiCalculator from './calculators/DdiCalculator';
@@ -35,14 +40,13 @@ import AntibioticDoseCalculator from './calculators/AntibioticDoseCalculator';
 
 import { useLanguage } from './context/LanguageContext';
 import { useTheme } from './context/ThemeContext';
-import { usePatient } from './context/PatientContext'; // <-- IMPORT PATIENT CONTEXT
+import { usePatient } from './context/PatientContext';
 
 export default function App() {
   const { lang, t } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  // GLOBAL PATIENT STATE DARI PATIENT CONTEXT
   const { patientName, setPatientName, patientId, setPatientId } = usePatient();
 
   const [isAuthorized, setIsAuthorized] = useState(() => {
@@ -56,12 +60,19 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
-  const [copySuccess, setCopySuccess] = useState(false);
+  
+  // State Toast Alert Mengambang
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  const triggerToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+  };
   
   // State Modal Pendukung
   const [isPatientDirOpen, setIsPatientDirOpen] = useState(false);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [voiceResult, setVoiceResult] = useState('');
 
   const [hospitalInfo, setHospitalInfo] = useState(() => {
@@ -124,10 +135,14 @@ export default function App() {
       setNtiWarfarin({ currentInr: '', targetInrMin: '2.0', targetInrMax: '3.0' });
       setNtiAmino({ drugType: 'amikacin', weight: '', height: '', gender: 'male', scr: '', age: '' });
     }
+    triggerToast('Formulir berhasil di-reset!', 'info');
   };
 
   const handleClearHistory = () => {
-    if (window.confirm('Hapus seluruh riwayat hitungan?')) setHistory([]);
+    if (window.confirm('Hapus seluruh riwayat hitungan?')) {
+      setHistory([]);
+      triggerToast('Riwayat berhasil dikosongkan!', 'warning');
+    }
   };
 
   const menuItems = [
@@ -332,14 +347,14 @@ export default function App() {
   const handleCopySummary = () => {
     let summaryText = `[Clinical Suite] Pasien: ${patientName || '-'} (RM: ${patientId || '-'})\nModul: ${activeTab.toUpperCase()}`;
     navigator.clipboard.writeText(summaryText);
-    setCopySuccess(true);
     saveToHistoryLog(activeTab.toUpperCase(), summaryText);
-    setTimeout(() => setCopySuccess(false), 2500);
+    triggerToast('Ringkasan berhasil disalin ke clipboard!', 'success');
   };
 
   const handleDownloadPDF = () => {
     let calcType = activeTab.toUpperCase();
     saveToHistoryLog(`PDF Export (${calcType})`, `Pasien ${patientName || '-'}: Evaluasi ${calcType} Selesai.`);
+    triggerToast('Memproses laporan PDF...', 'info');
 
     const element = document.getElementById('pdf-template');
     element.style.display = 'block';
@@ -354,6 +369,7 @@ export default function App() {
 
     html2pdf().set(opt).from(element).save().then(() => {
       element.style.display = 'none';
+      triggerToast('Laporan PDF berhasil diunduh!', 'success');
     });
   };
 
@@ -367,9 +383,33 @@ export default function App() {
           onAccessGranted={(role) => {
             setUserRole(role);
             setIsAuthorized(true);
+            triggerToast(`Login sukses sebagai ${role}`, 'success');
           }} 
         />
       )}
+
+      {/* TOAST ALERT COMPONENT */}
+      {toast.show && (
+        <ToastAlert 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast({ ...toast, show: false })} 
+        />
+      )}
+
+      {/* QUICK CLINICAL NOTES WIDGET */}
+      <PatientNotesWidget 
+        onSaveNote={() => triggerToast('Catatan visite berhasil disimpan!', 'success')} 
+      />
+
+      {/* MODAL SCANNER OBAT */}
+      <DrugScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanResult={(drug) => {
+          triggerToast(`Obat terdeteksi: ${drug.name}`, 'success');
+        }}
+      />
 
       {/* MODAL DIREKTORI PASIEN LOKAL */}
       <PatientDirectoryModal
@@ -378,6 +418,7 @@ export default function App() {
         onSelectPatient={(name, rm) => {
           setPatientName(name);
           setPatientId(rm);
+          triggerToast(`Pasien ${name} dipilih!`, 'success');
         }}
         currentPatientName={patientName}
         currentPatientId={patientId}
@@ -396,7 +437,7 @@ export default function App() {
         onClose={() => setIsVoiceModalOpen(false)}
         onTranscriptionResult={(text) => {
           setVoiceResult(text);
-          alert(`Transkrip Suara Diterima: "${text}"`);
+          triggerToast('Transkrip suara berhasil diterima!', 'success');
         }}
       />
 
@@ -412,14 +453,14 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setIsVoiceModalOpen(true)} className="p-2 rounded-lg bg-emerald-600 text-white text-xs font-bold" title="Asisten Suara Klinis">
+          <button onClick={() => setIsScannerOpen(true)} className="p-2 rounded-lg bg-emerald-600 text-white text-xs font-bold" title="Scanner Obat">
+            📸
+          </button>
+          <button onClick={() => setIsVoiceModalOpen(true)} className="p-2 rounded-lg bg-teal-600 text-white text-xs font-bold" title="Asisten Suara Klinis">
             🎙️
           </button>
           <button onClick={() => setIsPatientDirOpen(true)} className="p-2 rounded-lg bg-blue-600 text-white text-xs font-bold" title="Direktori Pasien">
             📁
-          </button>
-          <button onClick={() => setIsAuditModalOpen(true)} className="p-2 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold" title="Keamanan Sistem">
-            🔒
           </button>
           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-2 rounded-lg ${
             isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
@@ -445,7 +486,7 @@ export default function App() {
           setHospitalInfo={setHospitalInfo}
         />
 
-        {/* HEADER PASIEN DENGAN SHORTCUT DIREKTORI, VOICE & KEAMANAN */}
+        {/* HEADER PASIEN DENGAN SHORTCUT DIREKTORI, VOICE, SCANNER & KEAMANAN */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
           <div className="flex-1 w-full">
             <PatientHeader
@@ -457,8 +498,14 @@ export default function App() {
           </div>
           <div className="hidden md:flex items-center gap-2 self-end mb-1">
             <button
-              onClick={() => setIsVoiceModalOpen(true)}
+              onClick={() => setIsScannerOpen(true)}
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all text-xs whitespace-nowrap"
+            >
+              <span>📸</span> Scan Obat
+            </button>
+            <button
+              onClick={() => setIsVoiceModalOpen(true)}
+              className="flex items-center gap-2 bg-teal-600 hover:bg-teal-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all text-xs whitespace-nowrap"
             >
               <span>🎙️</span> Voice Notes
             </button>
@@ -474,7 +521,7 @@ export default function App() {
                 isDark ? 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
               }`}
             >
-              <span>🔒</span> Keamanan & Audit
+              <span>🔒</span> Keamanan
             </button>
           </div>
         </div>
@@ -491,6 +538,12 @@ export default function App() {
             <button onClick={() => setVoiceResult('')} className="text-xs font-bold px-2 py-1 bg-emerald-600 text-white rounded-lg">Tutup</button>
           </div>
         )}
+
+        {/* CDSS SAFETY BANNER (REAL-TIME KLINIS) */}
+        <ClinicalSafetyBanner activeTab={activeTab} currentInputs={getCurrentActiveInputs()} />
+
+        {/* CLINICAL OUTCOME TRACKER (TREND LAB PASIEN) */}
+        <ClinicalOutcomeTracker />
 
         <div className={`p-6 md:p-8 rounded-2xl shadow-xl mb-8 border transition-colors ${
           isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-slate-200/50'
@@ -732,7 +785,7 @@ export default function App() {
                   isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
                 }`}
               >
-                {copySuccess ? t.copiedBtn : t.copySaveBtn}
+                {t.copySaveBtn}
               </button>
 
               <button
