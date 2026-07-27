@@ -7,6 +7,11 @@ import HospitalHeader from './components/HospitalHeader';
 import HistoryLog from './components/HistoryLog';
 import RoleGateModal from './components/RoleGateModal';
 import AiAssistantWidget from './components/AiAssistantWidget';
+import PatientDirectoryModal from './components/PatientDirectoryModal';
+import DashboardOverview from './components/DashboardOverview';
+import AuditTrailModal from './components/AuditTrailModal';
+import VoiceAssistantModal from './components/VoiceAssistantModal';
+
 import NtiCalculator from './calculators/NtiCalculator';
 import DdiCalculator from './calculators/DdiCalculator';
 import TdmChartCalculator from './calculators/TdmChartCalculator';
@@ -20,13 +25,25 @@ import ElectrolyteCorrectionCalculator from './calculators/ElectrolyteCorrection
 import ArdsCalculator from './calculators/ArdsCalculator';
 import RenalDosingChecker from './calculators/RenalDosingChecker';
 import PregnancyCalculator from './calculators/PregnancyCalculator';
+import ChildPughCalculator from './calculators/ChildPughCalculator';
+import DiabetesCalculator from './calculators/DiabetesCalculator';
+import TriageCalculator from './calculators/TriageCalculator';
+import FluidCalculator from './calculators/FluidCalculator';
+import GcsCalculator from './calculators/GcsCalculator';
+import FraminghamCalculator from './calculators/FraminghamCalculator';
+import AntibioticDoseCalculator from './calculators/AntibioticDoseCalculator';
+
 import { useLanguage } from './context/LanguageContext';
 import { useTheme } from './context/ThemeContext';
+import { usePatient } from './context/PatientContext'; // <-- IMPORT PATIENT CONTEXT
 
 export default function App() {
   const { lang, t } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  // GLOBAL PATIENT STATE DARI PATIENT CONTEXT
+  const { patientName, setPatientName, patientId, setPatientId } = usePatient();
 
   const [isAuthorized, setIsAuthorized] = useState(() => {
     return sessionStorage.getItem('clinical_suite_auth_role') ? true : false;
@@ -35,14 +52,17 @@ export default function App() {
     return sessionStorage.getItem('clinical_suite_auth_role') || '';
   });
 
-  const [activeTab, setActiveTab] = useState('pk');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
-
-  const [patientName, setPatientName] = useState('');
-  const [patientId, setPatientId] = useState('');
+  
+  // State Modal Pendukung
+  const [isPatientDirOpen, setIsPatientDirOpen] = useState(false);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [voiceResult, setVoiceResult] = useState('');
 
   const [hospitalInfo, setHospitalInfo] = useState(() => {
     const saved = localStorage.getItem('clinical_suite_hospital');
@@ -111,17 +131,25 @@ export default function App() {
   };
 
   const menuItems = [
+    { id: 'dashboard', name: 'Dashboard Analitik', category: 'Utama', icon: '📊' },
     { id: 'pk', name: 'Dosis PK (Farmakokinetik)', category: 'Dosis & Obat', icon: '💊' },
     { id: 'drip', name: 'Dosis Drip / Syringe Pump', category: 'Dosis & Obat', icon: '💉' },
+    { id: 'abx_dose', name: 'Dosis Antibiotik (Adjusted ClCr)', category: 'Dosis & Obat', icon: '🦠' },
     { id: 'peds_geri', name: 'Pediatrik & Geriatri', category: 'Dosis & Obat', icon: '👶' },
     { id: 'stopp_start', name: 'Screening Geriatri (STOPP/START)', category: 'Dosis & Obat', icon: '📋' },
     { id: 'crrt', name: 'Dosis ICU & CRRT', category: 'Dosis & Obat', icon: '🌡️' },
+    { id: 'framingham', name: 'Risiko Jantung (Framingham 10-Yr)', category: 'Organ & Fungsi', icon: '❤️' },
+    { id: 'gcs', name: 'Neurologi IGD (GCS & Kesadaran)', category: 'Fisiologi & Cairan', icon: '🧠' },
+    { id: 'triage', name: 'Triase IGD (Australasian Triage Scale)', category: 'Fisiologi & Cairan', icon: '🚑' },
+    { id: 'fluid', name: 'Terapi Cairan & Luka Bakar (Parkland)', category: 'Fisiologi & Cairan', icon: '💧' },
     { id: 'electro', name: 'Koreksi Elektrolit Darurat (IGD)', category: 'Fisiologi & Cairan', icon: '🩸' },
     { id: 'ards', name: 'Evaluasi ARDS & AGD (ICU)', category: 'Fisiologi & Cairan', icon: '🫁' },
     { id: 'pregnancy', name: 'Usia Kehamilan & HPL (Obgin)', category: 'Organ & Fungsi', icon: '🤰' },
     { id: 'renal_dose', name: 'Auto-Checker Dosis Ginjal', category: 'Organ & Fungsi', icon: '🧪' },
     { id: 'label_print', name: 'Cetak Etiket & Resep Obat', category: 'Dosis & Obat', icon: '🖨️' },
     { id: 'hd_dose', name: 'Dosis Pasien Cuci Darah (HD)', category: 'Organ & Fungsi', icon: '🧪' },
+    { id: 'hepar', name: 'Evaluasi Hepar (Child-Pugh & MELD)', category: 'Organ & Fungsi', icon: '🫀' },
+    { id: 'diabetes', name: 'Manajemen Diabetes & Insulin', category: 'Nutrisi & Energi', icon: '🩸' },
     { id: 'steroid', name: 'Konversi Dosis Steroid', category: 'Dosis & Obat', icon: '🧬' },
     { id: 'nti', name: 'Obat Terapi Sempit (NTI / TDM)', category: 'Dosis & Obat', icon: '⚡' },
     { id: 'tdm_chart', name: 'Grafik Trend Monitoring TDM', category: 'Dosis & Obat', icon: '📊' },
@@ -132,11 +160,19 @@ export default function App() {
   ];
 
   const formulaInfo = {
+    dashboard: { title: 'Dashboard Analitik', formula: 'Statistik Sesi & Cache Lokal', guideline: 'Pusat ringkasan aktivitas klinis.' },
     pk: { title: 'Farmakokinetik', formula: 'LD = (C × Vd × BB) / F', guideline: 'Menentukan dosis awal dan pemeliharaan obat.' },
     drip: { title: 'Drip Infus', formula: 'Kecepatan = (Dose × BB × 60) / Konstr', guideline: 'Standar syringe pump.' },
     renal: { title: 'Fungsi Ginjal', formula: 'Cockcroft-Gault & CKD-EPI', guideline: 'Acuan penyesuaian dosis obat.' },
+    abx_dose: { title: 'Dosis Antibiotik (Ginjal)', formula: 'Penyesuaian Dosis = f(ClCr Pasien)', guideline: 'Menghitung penyesuaian frekuensi/dosis antibiotik empiris untuk mencegah toksisitas.' },
     anthro: { title: 'Antropometri', formula: 'BSA = √(TB×BB)/3600', guideline: 'Status gizi & BSA.' },
     kalori: { title: 'Kalori & Diet', formula: 'Mifflin-St Jeor TDEE', guideline: 'Perencanaan diet harian.' },
+    hepar: { title: 'Child-Pugh & MELD Score', formula: 'Akumulasi Poin Ensefalopati + Asites + Lab Nilai', guideline: 'Evaluasi sirosis & prognostik transplantasi hepar.' },
+    diabetes: { title: 'Manajemen Diabetes & Insulin', formula: 'eAG = 28.7(HbA1c)-46.7 | ISF = 1800/TDD | ICR = 500/TDD', guideline: 'Kalkulasi eAG, sensitivitas insulin, dan rasio karbohidrat.' },
+    triage: { title: 'Triase IGD (ATS)', formula: 'Kategori 1 (0m) s.d Kategori 5 (120m)', guideline: 'Standar pemilahan kegawatdaruratan medis di IGD berdasarkan skala ATS.' },
+    fluid: { title: 'Terapi Cairan & Luka Bakar', formula: 'Holliday-Segar & Parkland (4 mL × BB × %TBSA)', guideline: 'Perhitungan rumatan cairan harian & resusitasi luka bakar.' },
+    gcs: { title: 'Glasgow Coma Scale (GCS)', formula: 'Total GCS = Eye (1-4) + Motorik (1-6) + Verbal (1-5)', guideline: 'Penilaian kuantitatif tingkat kesadaran pada kasus neurologi dan kegawatdaruratan.' },
+    framingham: { title: 'Framingham Risk Score', formula: 'Akumulasi Poin Usia + Merokok + Kolesterol + TD Sistolik', guideline: 'Estimasi risiko Penyakit Jantung Koroner (PJK) dalam 10 tahun.' },
     steroid: { title: 'Konversi Dosis Steroid', formula: 'Dosis Target = (Dosis Asal / Equivalen Asal) × Equivalen Target', guideline: 'Konversi anti-inflamasi setara antar kortikosteroid.' },
     nti: { title: 'Terapi Sempit (NTI / TDM)', formula: 'Phenytoin Terkoreksi = C_obs / [(0.2 × Alb) + 0.1]', guideline: 'Pemantauan kadar obat sempit.' }
   };
@@ -232,13 +268,12 @@ export default function App() {
     };
   })();
 
-  // Perhitungan Real-time untuk NTI / TDM Vancomycin
   const vancoAuc = (() => {
     const { weight, scr, age, gender, dailyDoseMg } = ntiVanco;
     if (!weight || !scr || !age || !dailyDoseMg || scr <= 0) return 0;
     let clcrVal = ((140 - age) * weight) / (72 * scr);
     if (gender === 'female') clcrVal *= 0.85;
-    const estimatedCl = clcrVal * 0.06; // L/h
+    const estimatedCl = clcrVal * 0.06;
     if (estimatedCl <= 0) return 0;
     const auc = (dailyDoseMg / estimatedCl).toFixed(1);
     return Number(auc);
@@ -261,9 +296,6 @@ export default function App() {
     }
     if (activeTab === 'renal' && egfr >= 30 && egfr < 60) {
       return { isAlert: true, text: '⚠️ WARNING: eGFR 30 - 59 mL/min (CKD Stage 3). Lakukan penyesuaian dosis.' };
-    }
-    if (activeTab === 'nti' && ntiSubTab === 'vancomycin' && vancoAuc > 0 && (vancoAuc < 400 || vancoAuc > 600)) {
-      return { isAlert: true, text: `⚡ TDM VANCOMYCIN ALERT: Estimasi AUC24 (${vancoAuc} mg·hr/L) berada di luar rentang terapeutik target 400 - 600 mg·hr/L.` };
     }
     return { isAlert: false, text: '' };
   };
@@ -339,6 +371,35 @@ export default function App() {
         />
       )}
 
+      {/* MODAL DIREKTORI PASIEN LOKAL */}
+      <PatientDirectoryModal
+        isOpen={isPatientDirOpen}
+        onClose={() => setIsPatientDirOpen(false)}
+        onSelectPatient={(name, rm) => {
+          setPatientName(name);
+          setPatientId(rm);
+        }}
+        currentPatientName={patientName}
+        currentPatientId={patientId}
+      />
+
+      {/* MODAL AUDIT TRAIL & KEAMANAN */}
+      <AuditTrailModal
+        isOpen={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+        userRole={userRole}
+      />
+
+      {/* MODAL VOICE ASSISTANT */}
+      <VoiceAssistantModal
+        isOpen={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+        onTranscriptionResult={(text) => {
+          setVoiceResult(text);
+          alert(`Transkrip Suara Diterima: "${text}"`);
+        }}
+      />
+
       {/* MOBILE HEADER */}
       <div className={`md:hidden p-4 flex justify-between items-center sticky top-0 z-50 border-b ${
         isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
@@ -350,11 +411,22 @@ export default function App() {
             <span className="text-[9px] text-slate-400">Role: {userRole || 'Professional'}</span>
           </div>
         </div>
-        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-2 rounded-lg ${
-          isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
-        }`}>
-          {isSidebarOpen ? '✖' : '☰'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setIsVoiceModalOpen(true)} className="p-2 rounded-lg bg-emerald-600 text-white text-xs font-bold" title="Asisten Suara Klinis">
+            🎙️
+          </button>
+          <button onClick={() => setIsPatientDirOpen(true)} className="p-2 rounded-lg bg-blue-600 text-white text-xs font-bold" title="Direktori Pasien">
+            📁
+          </button>
+          <button onClick={() => setIsAuditModalOpen(true)} className="p-2 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold" title="Keamanan Sistem">
+            🔒
+          </button>
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-2 rounded-lg ${
+            isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
+          }`}>
+            {isSidebarOpen ? '✖' : '☰'}
+          </button>
+        </div>
       </div>
 
       <Sidebar
@@ -373,12 +445,52 @@ export default function App() {
           setHospitalInfo={setHospitalInfo}
         />
 
-        <PatientHeader
-          patientName={patientName}
-          setPatientName={setPatientName}
-          patientId={patientId}
-          setPatientId={setPatientId}
-        />
+        {/* HEADER PASIEN DENGAN SHORTCUT DIREKTORI, VOICE & KEAMANAN */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+          <div className="flex-1 w-full">
+            <PatientHeader
+              patientName={patientName}
+              setPatientName={setPatientName}
+              patientId={patientId}
+              setPatientId={setPatientId}
+            />
+          </div>
+          <div className="hidden md:flex items-center gap-2 self-end mb-1">
+            <button
+              onClick={() => setIsVoiceModalOpen(true)}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all text-xs whitespace-nowrap"
+            >
+              <span>🎙️</span> Voice Notes
+            </button>
+            <button
+              onClick={() => setIsPatientDirOpen(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all text-xs whitespace-nowrap"
+            >
+              <span>📁</span> Direktori Pasien
+            </button>
+            <button
+              onClick={() => setIsAuditModalOpen(true)}
+              className={`flex items-center gap-2 font-bold py-3 px-4 rounded-xl shadow-lg transition-all text-xs whitespace-nowrap border ${
+                isDark ? 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+              }`}
+            >
+              <span>🔒</span> Keamanan & Audit
+            </button>
+          </div>
+        </div>
+
+        {/* BANNER HASIL TRANSKRIP SUARA JIKA ADA */}
+        {voiceResult && (
+          <div className={`p-4 rounded-xl mb-4 flex items-center justify-between border ${
+            isDark ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+          }`}>
+            <div className="text-xs">
+              <span className="font-bold block mb-1">🎙️ Transkrip Suara Terakhir:</span>
+              <p className="italic">"{voiceResult}"</p>
+            </div>
+            <button onClick={() => setVoiceResult('')} className="text-xs font-bold px-2 py-1 bg-emerald-600 text-white rounded-lg">Tutup</button>
+          </div>
+        )}
 
         <div className={`p-6 md:p-8 rounded-2xl shadow-xl mb-8 border transition-colors ${
           isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-slate-200/50'
@@ -396,19 +508,28 @@ export default function App() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button onClick={handleResetForm} className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
-                isDark ? 'bg-slate-800 text-slate-400 hover:text-white border-slate-700' : 'bg-slate-100 text-slate-600 hover:text-slate-900 border-slate-300'
-              }`}>
-                {t.resetBtn}
-              </button>
-              <button onClick={() => setShowInfo(true)} className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
-                isDark ? 'bg-slate-800 text-blue-400 border-slate-700' : 'bg-blue-50 text-blue-600 border-blue-200'
-              }`}>
-                {t.infoBtn}
-              </button>
-            </div>
+            {activeTab !== 'dashboard' && (
+              <div className="flex items-center gap-2">
+                <button onClick={handleResetForm} className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                  isDark ? 'bg-slate-800 text-slate-400 hover:text-white border-slate-700' : 'bg-slate-100 text-slate-600 hover:text-slate-900 border-slate-300'
+                }`}>
+                  {t.resetBtn}
+                </button>
+                <button onClick={() => setShowInfo(true)} className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                  isDark ? 'bg-slate-800 text-blue-400 border-slate-700' : 'bg-blue-50 text-blue-600 border-blue-200'
+                }`}>
+                  {t.infoBtn}
+                </button>
+              </div>
+            )}
           </div>
+
+          {activeTab === 'dashboard' && (
+            <DashboardOverview 
+              history={history} 
+              onNavigateTab={(tabId) => setActiveTab(tabId)} 
+            />
+          )}
 
           {activeTab === 'pk' && (
             <div>
@@ -453,8 +574,13 @@ export default function App() {
           )}
 
           {activeTab === 'peds_geri' && <PedsGeriCalculator />}
+          {activeTab === 'abx_dose' && <AntibioticDoseCalculator />}
           {activeTab === 'stopp_start' && <StoppStartCalculator />}
           {activeTab === 'crrt' && <CrrtDoseCalculator />}
+          {activeTab === 'framingham' && <FraminghamCalculator />}
+          {activeTab === 'gcs' && <GcsCalculator />}
+          {activeTab === 'triage' && <TriageCalculator />}
+          {activeTab === 'fluid' && <FluidCalculator />}
           {activeTab === 'electro' && <ElectrolyteCorrectionCalculator />}
           {activeTab === 'ards' && <ArdsCalculator />}
           {activeTab === 'pregnancy' && <PregnancyCalculator />}
@@ -462,6 +588,10 @@ export default function App() {
           {activeTab === 'label_print' && <PrescriptionEtiquetteCalculator />}
           {activeTab === 'hd_dose' && <HemodialysisDoseCalculator />}
           
+          {/* MODUL HEPAR & DIABETES */}
+          {activeTab === 'hepar' && <ChildPughCalculator />}
+          {activeTab === 'diabetes' && <DiabetesCalculator />}
+
           {activeTab === 'steroid' && (
             <SteroidConversionCalculator 
               inputs={steroidInputs}
@@ -591,26 +721,28 @@ export default function App() {
             </div>
           )}
 
-          {/* ACTION BUTTONS */}
-          <div className={`mt-8 border-t pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 ${
-            isDark ? 'border-slate-800' : 'border-slate-200'
-          }`}>
-            <button
-              onClick={handleCopySummary}
-              className={`w-full sm:w-auto font-bold py-3 px-5 rounded-xl border transition-all flex items-center justify-center gap-2 text-xs ${
-                isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
-              }`}
-            >
-              {copySuccess ? t.copiedBtn : t.copySaveBtn}
-            </button>
+          {/* ACTION BUTTONS (Hidden in Dashboard view) */}
+          {activeTab !== 'dashboard' && (
+            <div className={`mt-8 border-t pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 ${
+              isDark ? 'border-slate-800' : 'border-slate-200'
+            }`}>
+              <button
+                onClick={handleCopySummary}
+                className={`w-full sm:w-auto font-bold py-3 px-5 rounded-xl border transition-all flex items-center justify-center gap-2 text-xs ${
+                  isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+                }`}
+              >
+                {copySuccess ? t.copiedBtn : t.copySaveBtn}
+              </button>
 
-            <button
-              onClick={handleDownloadPDF}
-              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-xs"
-            >
-              {t.downloadPdfBtn}
-            </button>
-          </div>
+              <button
+                onClick={handleDownloadPDF}
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-xs"
+              >
+                {t.downloadPdfBtn}
+              </button>
+            </div>
+          )}
         </div>
 
         <HistoryLog
@@ -659,7 +791,7 @@ export default function App() {
         </div>
       )}
 
-      {/* TEMPLATE PDF DENGAN TABEL DETAIL HASIL LENGKAP */}
+      {/* TEMPLATE PDF DINAMIS (SEMUA MODUL MENAMPILKAN DATA DETAIL) */}
       <div id="pdf-template" style={{ display: 'none' }} className="p-8 bg-white text-black font-sans text-xs">
         <div style={{ borderBottom: '3px double #000', paddingBottom: '12px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '15px' }}>
@@ -706,7 +838,7 @@ export default function App() {
             <thead>
               <tr style={{ background: '#1e293b', color: '#fff', textAlign: 'left' }}>
                 <th style={{ padding: '6px 10px', border: '1px solid #cbd5e1' }}>Parameter Klinis / Variabel</th>
-                <th style={{ padding: '6px 10px', border: '1px solid #cbd5e1' }}>Nilai Hasil Kalkulasi</th>
+                <th style={{ padding: '6px 10px', border: '1px solid #cbd5e1' }}>Nilai Hasil Kalkulasi / Input</th>
                 <th style={{ padding: '6px 10px', border: '1px solid #cbd5e1' }}>Satuan / Keterangan</th>
               </tr>
             </thead>
@@ -720,8 +852,8 @@ export default function App() {
               )}
               {activeTab === 'drip' && (
                 <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Target Dosis</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>{dripInputs.dose || '-'}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>mcg/kg/min</td></tr>
-                  <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>Kecepatan Infus Syringe Pump</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '12px', color: '#1e40af' }}>{drip}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>mL/jam</td></tr>
+                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Target Dosis Infus</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>{dripInputs.dose || '-'}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>mcg/kg/min</td></tr>
+                  <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>Kecepatan Syringe Pump</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '12px', color: '#1e40af' }}>{drip}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>mL/jam</td></tr>
                 </>
               )}
               {activeTab === 'renal' && (
@@ -747,14 +879,59 @@ export default function App() {
                   <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Makronutrisi (Protein / Carbs / Fat)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{dietPlan.protein}g / {dietPlan.carbs}g / {dietPlan.fat}g</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Gram/hari</td></tr>
                 </>
               )}
+              {activeTab === 'hepar' && (
+                <>
+                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul Evaluasi</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>Child-Pugh & MELD Score</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Hepatology Score</td></tr>
+                  <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Status Sirosis & Prognosis</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>Tersedia di Panel Aktif</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Klinis Hepar</td></tr>
+                </>
+              )}
+              {activeTab === 'diabetes' && (
+                <>
+                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul Endokrin</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>Manajemen Diabetes & Insulin</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Endocrine Management</td></tr>
+                  <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Parameter Kalkulasi</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#059669' }}>eAG, ISF & ICR Dinamis</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Glikemik Kontrol</td></tr>
+                </>
+              )}
+              {activeTab === 'triage' && (
+                <>
+                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul IGD</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>Triase IGD (ATS)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Emergency Triage</td></tr>
+                  <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Kategori Kegawatdaruratan</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#dc2626' }}>Skala ATS 1 s.d 5 Terpilih</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Prioritas Respon</td></tr>
+                </>
+              )}
+              {activeTab === 'fluid' && (
+                <>
+                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul Cairan & Luka Bakar</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>Holliday-Segar & Parkland Formula</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Resusitasi Cairan</td></tr>
+                </>
+              )}
+              {activeTab === 'gcs' && (
+                <>
+                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul Neurologi</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>Glasgow Coma Scale (GCS)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Kesadaran Pasien</td></tr>
+                </>
+              )}
+              {activeTab === 'framingham' && (
+                <>
+                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul Kardiologi</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>Framingham 10-Year PVD Risk Score</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Risiko Kardiovaskular</td></tr>
+                </>
+              )}
+              {activeTab === 'abx_dose' && (
+                <>
+                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul Antimikroba</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>Penyesuaian Dosis Antibiotik Berbasis ClCr</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Renal Dosing</td></tr>
+                </>
+              )}
               {activeTab === 'steroid' && (
-                <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Konversi Steroid Aktif</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{steroidInputs.sourceDose || 0} mg {steroidInputs.sourceDrug}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Setara anti-inflamasi</td></tr>
+                <>
+                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Dosis & Obat Asal</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{steroidInputs.sourceDose || 0} mg {steroidInputs.sourceDrug}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Regimen Awal</td></tr>
+                  <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>Target Konversi Steroid</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>Dosis Setara Anti-inflamasi</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', color: '#1e40af' }}>Equipotent Dose</td></tr>
+                </>
               )}
               {activeTab === 'nti' && (
-                <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>TDM / NTI (Sub-Modul: {ntiSubTab})</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{ntiSubTab === 'vancomycin' ? `${vancoAuc} mg·hr/L (AUC)` : 'Evaluasi Terapi Sempit'}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Therapeutic Drug Monitoring</td></tr>
+                <>
+                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul TDM / NTI</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{ntiSubTab === 'vancomycin' ? `${vancoAuc} mg·hr/L (Vancomycin AUC)` : 'Terapi Sempit Terpilih'}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Therapeutic Drug Monitoring</td></tr>
+                </>
               )}
-              {!['pk', 'drip', 'renal', 'anthro', 'kalori', 'steroid', 'nti'].includes(activeTab) && (
-                <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul Aktif: {activeTab.toUpperCase()}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Evaluasi Selesai</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Validasi Klinis</td></tr>
+              {!['dashboard', 'pk', 'drip', 'renal', 'anthro', 'kalori', 'hepar', 'diabetes', 'triage', 'fluid', 'gcs', 'framingham', 'abx_dose', 'steroid', 'nti'].includes(activeTab) && (
+                <>
+                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul Aktif</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{activeTab.toUpperCase()} Evaluasi Klinis</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Standar Rumah Sakit</td></tr>
+                </>
               )}
             </tbody>
           </table>
