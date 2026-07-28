@@ -1,13 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { usePatientStore } from '../store/usePatientStore';
 
 export default function AntibioticDoseCalculator() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
+  // Ambil data pasien global dari store atas
+  const { patient } = usePatientStore();
+
   // State Input Pasien & Pemilihan Antibiotik
   const [antibiotic, setAntibiotic] = useState('meropenem');
   const [clcrInput, setClcrInput] = useState('65'); // ml/min
+
+  // Auto-sync & hitung otomatis ClCr dari Patient Context Bar
+  useEffect(() => {
+    if (patient) {
+      if (patient.serumCreatinine !== '' && patient.age !== '' && patient.weightKg !== '') {
+        const age = Number(patient.age);
+        const wt = Number(patient.weightKg);
+        const scr = Number(patient.serumCreatinine);
+        const isFemale = patient.gender === 'Perempuan';
+
+        if (age > 0 && wt > 0 && scr > 0) {
+          let calcClCr = ((140 - age) * wt) / (72 * scr);
+          if (isFemale) calcClCr *= 0.85;
+          setClcrInput(calcClCr.toFixed(1));
+        }
+      }
+    }
+  }, [patient]);
 
   // Database Dosis & Penyesuaian Berdasarkan Fungsi Ginjal (ClCr)
   const antibioticDatabase = {
@@ -71,6 +93,13 @@ export default function AntibioticDoseCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
+      {patient.patientName && (
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | ClCr terhitung otomatis dari profil pasien.</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Synced</span>
+        </div>
+      )}
+
       {/* HEADER INFORMASI */}
       <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
         <h3 className="font-bold text-blue-500 mb-2">🦠 Kalkulator & Penyesuaian Dosis Antibiotik (Ginjal)</h3>

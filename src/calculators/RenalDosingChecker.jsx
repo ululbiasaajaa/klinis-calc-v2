@@ -1,13 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { usePatientStore } from '../store/usePatientStore';
 
 export default function RenalDosingChecker() {
   const { theme } = useTheme();
   const { lang } = useLanguage();
   const isDark = theme === 'dark';
 
-  const [inputs, setInputs] = useState({ clcr: '45' }); // ClCr mL/min
+  const { patient } = usePatientStore();
+  const [inputs, setInputs] = useState({ clcr: '45' });
+
+  // Auto-sync & hitung otomatis dari Patient Context Bar
+  useEffect(() => {
+    if (patient.serumCreatinine !== '' && patient.age !== '' && patient.weightKg !== '') {
+      const age = Number(patient.age);
+      const wt = Number(patient.weightKg);
+      const scr = Number(patient.serumCreatinine);
+      const isFemale = patient.gender === 'Perempuan';
+
+      if (age > 0 && wt > 0 && scr > 0) {
+        let calcClCr = ((140 - age) * wt) / (72 * scr);
+        if (isFemale) calcClCr *= 0.85;
+        
+        setInputs({ clcr: calcClCr.toFixed(1) });
+      }
+    }
+  }, [patient]);
 
   // Database Dosis Penyesuaian Ginjal untuk Obat High-Risk
   const renalDosingDatabase = [
@@ -69,7 +88,12 @@ export default function RenalDosingChecker() {
       }`}>
         <p className="font-bold mb-1">💊 Modul Auto-Checker Penyesuaian Dosis Obat Berbasis GFR / ClCr:</p>
         <p>
-          Masukkan nilai klirens kreatinin (ClCr) pasien di bawah ini untuk melihat secara otomatis apakah obat-obatan golongan <i>Narrow Therapeutic Index</i> atau <i>Renal Clearance</i> perlu diturunkan dosisnya.
+          {patient.patientName ? (
+            <span className="text-emerald-400 font-semibold block mb-1">
+              ✨ Pasien Aktif Terdeteksi: {patient.patientName} (RM: {patient.patientId || '-'}). Nilai ClCr di bawah otomatis dihitung dari profil pasien!
+            </span>
+          ) : null}
+          Masukkan atau sesuaikan nilai klirens kreatinin (ClCr) pasien di bawah ini untuk melihat rekomendasi penyesuaian dosis obat.
         </p>
       </div>
 

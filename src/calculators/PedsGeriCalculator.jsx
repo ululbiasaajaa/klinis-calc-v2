@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { usePatientStore } from '../store/usePatientStore';
 
 // DATABASE BEERS CRITERIA (OBAT HIGH-RISK UNTUK GERIATRI / LANSIA)
 const GERI_BEERS_LIST = [
@@ -42,6 +43,7 @@ const GERI_BEERS_LIST = [
 
 export default function PedsGeriCalculator() {
   const { lang } = useLanguage();
+  const { patient } = usePatientStore();
   const [subTab, setSubTab] = useState('peds'); // 'peds' or 'geri'
 
   // PEDIATRIC STATE
@@ -55,6 +57,17 @@ export default function PedsGeriCalculator() {
 
   // GERIATRIC STATE
   const [selectedGeriDrugs, setSelectedGeriDrugs] = useState([]);
+
+  // Auto-sync data dari Patient Context Bar (Berat & Tinggi Badan anak)
+  useEffect(() => {
+    if (patient) {
+      setPedsInput((prev) => ({
+        ...prev,
+        weight: patient.weightKg !== '' ? String(patient.weightKg) : prev.weight,
+        height: patient.heightCm !== '' ? String(patient.heightCm) : prev.height,
+      }));
+    }
+  }, [patient]);
 
   const handlePedsChange = (e) => {
     setPedsInput({ ...pedsInput, [e.target.name]: e.target.value });
@@ -102,6 +115,13 @@ export default function PedsGeriCalculator() {
 
   return (
     <div>
+      {patient.patientName && (
+        <div className="p-3 mb-4 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between text-xs">
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Berat & Tinggi badan tersinkronisasi otomatis.</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Synced</span>
+        </div>
+      )}
+
       {/* SUB-TAB NAVIGATOR */}
       <div className="flex border-b border-slate-800 mb-6 gap-2">
         <button
@@ -204,7 +224,7 @@ export default function PedsGeriCalculator() {
             </div>
           </div>
 
-          {/* HASIL DEDIATRIK */}
+          {/* HASIL PEDIATRIK */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-blue-950/40 border border-blue-800/50 p-4 rounded-2xl text-center">
             <div>
               <span className="text-[10px] font-bold text-blue-400 block mb-1">
@@ -255,7 +275,7 @@ export default function PedsGeriCalculator() {
       {subTab === 'geri' && (
         <div className="space-y-4">
           <h4 className="text-xs font-bold text-slate-300 mb-2">
-            👵 {lang === 'id' ? 'Screening Potensi Obats Berbahaya Pada Lansia (Beers Criteria 2023):' : 'Screening Potentially Inappropriate Medications in Elderly (Beers Criteria):'}
+            👵 {lang === 'id' ? 'Screening Potensi Obat Berbahaya Pada Lansia (Beers Criteria 2023):' : 'Screening Potentially Inappropriate Medications in Elderly (Beers Criteria):'}
           </h4>
 
           <div className="space-y-2">

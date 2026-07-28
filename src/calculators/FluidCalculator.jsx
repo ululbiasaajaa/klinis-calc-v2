@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { usePatientStore } from '../store/usePatientStore';
 
 export default function FluidCalculator() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  // Ambil data pasien global dari store atas
+  const { patient } = usePatientStore();
 
   // State untuk Holliday-Segar (Rumatan Cairan)
   const [weightFluid, setWeightFluid] = useState('65');
@@ -11,6 +15,15 @@ export default function FluidCalculator() {
   // State untuk Parkland Formula (Luka Bakar)
   const [weightBurn, setWeightBurn] = useState('60');
   const [tbsa, setTbsa] = useState('25'); // Persentase Luas Luka Bakar (%)
+
+  // Auto-sync data berat badan dari Patient Context Bar ke kedua kalkulator cairan
+  useEffect(() => {
+    if (patient && patient.weightKg !== '') {
+      const wtStr = String(patient.weightKg);
+      setWeightFluid(wtStr);
+      setWeightBurn(wtStr);
+    }
+  }, [patient]);
 
   // 1. Kalkulasi Holliday-Segar (Rumatan Cairan 24 Jam)
   const maintenanceFluid = (() => {
@@ -48,6 +61,13 @@ export default function FluidCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
+      {patient.patientName && (
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Berat badan tersinkronisasi otomatis.</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Synced</span>
+        </div>
+      )}
+
       {/* BAGIAN 1: HOLLIDAY-SEGAR (RUMATAN CAIRAN) */}
       <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
         <h3 className="font-bold text-blue-500 mb-2">💧 1. Kalkulator Cairan Rumatan (Holliday-Segar Method)</h3>
