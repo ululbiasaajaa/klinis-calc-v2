@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import html2pdf from 'html2pdf.js';
 
 import Sidebar from './components/Sidebar';
-import PatientContextBar from './components/PatientContextBar'; // <-- IMPORT PATIENT CONTEXT BAR BARU
+import PatientContextBar from './components/PatientContextBar';
 import HospitalHeader from './components/HospitalHeader';
 import HistoryLog from './components/HistoryLog';
 import RoleGateModal from './components/RoleGateModal';
@@ -74,6 +74,32 @@ export default function App() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [voiceResult, setVoiceResult] = useState('');
+
+  // PWA Install Prompt State & Listener
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      triggerToast('Aplikasi berhasil diinstal ke perangkat!', 'success');
+    }
+    setDeferredPrompt(null);
+    setIsInstallable(false);
+  };
 
   useEffect(() => {
     const handleGlobalShortcut = (e) => {
@@ -471,6 +497,11 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isInstallable && (
+            <button onClick={handleInstallClick} className="p-2 rounded-lg bg-blue-600 text-white text-xs font-bold" title="Install Aplikasi">
+              📥
+            </button>
+          )}
           <button onClick={() => setIsCommandOpen(true)} className="p-2 rounded-lg bg-indigo-600 text-white text-xs font-bold" title="Cari Cepat (Ctrl+K)">
             🔍
           </button>
@@ -502,46 +533,55 @@ export default function App() {
       />
 
       <main className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full space-y-6">
+        
+        {/* PATIENT CONTEXT BAR GLOBAL (Hanya 1 di paling atas) */}
+        <PatientContextBar 
+          onOpenDirectory={() => setIsPatientDirOpen(true)} 
+        />
+
         <HospitalHeader
           hospitalInfo={hospitalInfo}
           setHospitalInfo={setHospitalInfo}
         />
 
-        {/* HEADER PASIEN DENGAN PATIENT CONTEXT BAR GLOBAL */}
-        <div className="flex flex-col gap-4">
-          <PatientContextBar 
-            onOpenDirectory={() => setIsPatientDirOpen(true)} 
-          />
-
-          <div className="hidden md:flex items-center justify-end gap-2">
+        {/* SHORTCUTS BAR & PWA INSTALL BUTTON */}
+        <div className="hidden md:flex items-center justify-end gap-2">
+          {isInstallable && (
             <button
-              onClick={() => setIsCommandOpen(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer"
-              title="Cari Cepat (Ctrl + K)"
+              onClick={handleInstallClick}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer animate-pulse"
+              title="Install Aplikasi Klinis"
             >
-              <span>🔍</span> Cari Modul (Ctrl+K)
+              <span>📥💻</span> Install App
             </button>
-            <button
-              onClick={() => setIsScannerOpen(true)}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer"
-            >
-              <span>📸</span> Scan Obat
-            </button>
-            <button
-              onClick={() => setIsVoiceModalOpen(true)}
-              className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer"
-            >
-              <span>🎙️</span> Voice Notes
-            </button>
-            <button
-              onClick={() => setIsAuditModalOpen(true)}
-              className={`flex items-center gap-2 font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap border cursor-pointer ${
-                isDark ? 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
-              }`}
-            >
-              <span>🔒</span> Keamanan ({userRole})
-            </button>
-          </div>
+          )}
+          <button
+            onClick={() => setIsCommandOpen(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer"
+            title="Cari Cepat (Ctrl + K)"
+          >
+            <span>🔍</span> Cari Modul (Ctrl+K)
+          </button>
+          <button
+            onClick={() => setIsScannerOpen(true)}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer"
+          >
+            <span>📸</span> Scan Obat
+          </button>
+          <button
+            onClick={() => setIsVoiceModalOpen(true)}
+            className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer"
+          >
+            <span>🎙️</span> Voice Notes
+          </button>
+          <button
+            onClick={() => setIsAuditModalOpen(true)}
+            className={`flex items-center gap-2 font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap border cursor-pointer ${
+              isDark ? 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+            }`}
+          >
+            <span>🔒</span> Keamanan ({userRole})
+          </button>
         </div>
 
         {/* BANNER HASIL TRANSKRIP SUARA JIKA ADA */}
@@ -791,7 +831,7 @@ export default function App() {
             </div>
           )}
 
-          {/* ACTION BUTTONS (STANDAR TOMBOL: PRIMARY BIRU, SUCCESS HIJAU) */}
+          {/* ACTION BUTTONS */}
           {activeTab !== 'dashboard' && (
             <div className={`mt-8 border-t pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 ${
               isDark ? 'border-slate-800' : 'border-slate-200'

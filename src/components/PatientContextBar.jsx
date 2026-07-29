@@ -1,118 +1,107 @@
 import React from 'react';
-import { useTheme } from '../context/ThemeContext';
 import { usePatient } from '../context/PatientContext';
+import { useTheme } from '../context/ThemeContext';
 
-export function PatientContextBar({ onOpenDirectory }) {
+export default function PatientContextBar({ onOpenDirectory }) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const { 
-    patientName, setPatientName, 
-    patientId, setPatientId, 
-    patientAge, setPatientAge,
-    patientWeight, setPatientWeight,
-    patientHeight, setPatientHeight,
-    patientScr, setPatientScr,
-    patientDiagnosis, setPatientDiagnosis
-  } = usePatient();
+  const { patientName, setPatientName, patientId, setPatientId } = usePatient();
 
   return (
-    <div className={`p-4 rounded-2xl mb-6 border transition-colors ${
-      isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+    <div className={`p-4 md:p-5 rounded-2xl shadow-xl border transition-colors relative z-10 ${
+      isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-slate-200/50'
     }`}>
-      {/* HEADER BAR */}
-      <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-700/40">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b pb-3 border-slate-700/50">
         <div className="flex items-center gap-2">
-          <span className="text-base">👤</span>
-          <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+          <span className="text-lg">👤</span>
+          <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             Quick Patient Summary (Active Context)
-          </h3>
+          </span>
         </div>
+
+        {/* TOMBOL DIREKTORI UTAMA - DIJAMIN KLIK-ABLE */}
         <button
+          type="button"
           onClick={onOpenDirectory}
-          className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition-all text-xs whitespace-nowrap cursor-pointer z-20 relative"
         >
           <span>📁</span> Pilih / Cari Pasien
         </button>
       </div>
 
-      {/* GRID DATA PASIEN TERPUSAT */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-xs">
-        
-        {/* NAMA PASIEN */}
-        <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-          <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">NAMA PASIEN</span>
+      {/* Input Fields Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+        <div className="col-span-1 sm:col-span-1 md:col-span-1">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nama Pasien</label>
           <input
             type="text"
             value={patientName}
             onChange={(e) => setPatientName(e.target.value)}
             placeholder="Nama Pasien"
-            className="w-full bg-transparent font-bold outline-none text-xs truncate"
+            className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${
+              isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
+            }`}
           />
         </div>
 
-        {/* NO REKAM MEDIS */}
-        <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-          <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">NO. REKAM MEDIS</span>
+        <div className="col-span-1 sm:col-span-1 md:col-span-1">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">No. Rekam Medis</label>
           <input
             type="text"
             value={patientId}
             onChange={(e) => setPatientId(e.target.value)}
             placeholder="No. RM"
-            className="w-full bg-transparent font-bold outline-none text-xs truncate font-mono"
+            className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${
+              isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
+            }`}
           />
         </div>
 
-        {/* USIA & GENDER */}
-        <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-          <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">USIA (TAHUN)</span>
+        <div className="col-span-1 sm:col-span-1 md:col-span-1">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Usia (Tahun)</label>
           <input
             type="number"
-            value={patientAge || ''}
-            onChange={(e) => setPatientAge(e.target.value)}
             placeholder="Usia"
-            className="w-full bg-transparent font-bold outline-none text-xs"
+            className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${
+              isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
+            }`}
           />
         </div>
 
-        {/* BERAT BADAN (BB) */}
-        <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-          <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">BERAT BADAN (KG)</span>
+        <div className="col-span-1 sm:col-span-1 md:col-span-1">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Berat Badan (kg)</label>
           <input
             type="number"
-            value={patientWeight || ''}
-            onChange={(e) => setPatientWeight(e.target.value)}
             placeholder="BB (kg)"
-            className="w-full bg-transparent font-bold outline-none text-xs text-blue-500"
+            className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${
+              isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
+            }`}
           />
         </div>
 
-        {/* KREATININ SERUM (SCr) */}
-        <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-          <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">SERUM CREATININE</span>
+        <div className="col-span-1 sm:col-span-1 md:col-span-1">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Serum Creatinine</label>
           <input
             type="number"
-            value={patientScr || ''}
-            onChange={(e) => setPatientScr(e.target.value)}
             placeholder="SCr mg/dL"
-            className="w-full bg-transparent font-bold outline-none text-xs text-amber-500"
+            className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${
+              isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
+            }`}
           />
         </div>
 
-        {/* DIAGNOSIS / RUANGAN */}
-        <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-          <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">DIAGNOSIS / RUANGAN</span>
+        <div className="col-span-1 sm:col-span-1 md:col-span-1">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Diagnosis / Ruangan</label>
           <input
             type="text"
-            value={patientDiagnosis || ''}
-            onChange={(e) => setPatientDiagnosis(e.target.value)}
             placeholder="Diagnosis / ICU"
-            className="w-full bg-transparent font-bold outline-none text-xs truncate"
+            className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${
+              isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
+            }`}
           />
         </div>
-
       </div>
     </div>
   );
 }
-
-export default PatientContextBar;
