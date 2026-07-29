@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import html2pdf from 'html2pdf.js';
 
 import Sidebar from './components/Sidebar';
-import PatientHeader from './components/PatientHeader';
+import PatientContextBar from './components/PatientContextBar'; // <-- IMPORT PATIENT CONTEXT BAR BARU
 import HospitalHeader from './components/HospitalHeader';
 import HistoryLog from './components/HistoryLog';
 import RoleGateModal from './components/RoleGateModal';
@@ -15,7 +15,8 @@ import ToastAlert from './components/ToastAlert';
 import PatientNotesWidget from './components/PatientNotesWidget';
 import ClinicalSafetyBanner from './components/ClinicalSafetyBanner';
 import DrugScannerModal from './components/DrugScannerModal';
-import ClinicalOutcomeTracker from './components/ClinicalOutcomeTracker'; // <-- IMPORT OUTCOME TRACKER
+import ClinicalOutcomeTracker from './components/ClinicalOutcomeTracker';
+import CommandPaletteModal from './components/CommandPaletteModal';
 
 import NtiCalculator from './calculators/NtiCalculator';
 import DdiCalculator from './calculators/DdiCalculator';
@@ -43,7 +44,7 @@ import { useTheme } from './context/ThemeContext';
 import { usePatient } from './context/PatientContext';
 
 export default function App() {
-  const { lang, t } = useLanguage();
+  const { t } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -61,19 +62,29 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   
-  // State Toast Alert Mengambang
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
   const triggerToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
   };
   
-  // State Modal Pendukung
   const [isPatientDirOpen, setIsPatientDirOpen] = useState(false);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [voiceResult, setVoiceResult] = useState('');
+
+  useEffect(() => {
+    const handleGlobalShortcut = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalShortcut);
+    return () => window.removeEventListener('keydown', handleGlobalShortcut);
+  }, []);
 
   const [hospitalInfo, setHospitalInfo] = useState(() => {
     const saved = localStorage.getItem('clinical_suite_hospital');
@@ -97,14 +108,12 @@ export default function App() {
     localStorage.setItem('clinical_suite_history', JSON.stringify(history));
   }, [history]);
 
-  // States untuk Kalkulator Dasar App.jsx
   const [pkInputs, setPkInputs] = useState({ targetConc: '', vd: '', weight: '', bioavailability: '1', clearance: '', interval: '8' });
   const [dripInputs, setDripInputs] = useState({ dose: '', weight: '', drugMg: '', volumeMl: '100' });
   const [renalInputs, setRenalInputs] = useState({ age: '', weight: '', scr: '', gender: 'male' });
   const [anthroInputs, setAnthroInputs] = useState({ height: '', weight: '', gender: 'male', tbsaBurn: '' });
   const [tdeeInputs, setTdeeInputs] = useState({ weight: '', height: '', age: '', gender: 'male', activityLevel: '1.2', goal: 'fat_loss' });
 
-  // States untuk NTI / TDM Calculator
   const [ntiSubTab, setNtiSubTab] = useState('phenytoin');
   const [ntiPhenytoin, setNtiPhenytoin] = useState({ phenytoinObs: '', albumin: '4.0', renalImpairment: 'no' });
   const [ntiVanco, setNtiVanco] = useState({ weight: '', scr: '', age: '', gender: 'male', dailyDoseMg: '2000' });
@@ -112,7 +121,6 @@ export default function App() {
   const [ntiWarfarin, setNtiWarfarin] = useState({ currentInr: '', targetInrMin: '2.0', targetInrMax: '3.0' });
   const [ntiAmino, setNtiAmino] = useState({ drugType: 'amikacin', weight: '', height: '', gender: 'male', scr: '', age: '' });
 
-  // States untuk Steroid Conversion Calculator
   const [steroidInputs, setSteroidInputs] = useState({ sourceDrug: 'hydrocortisone', sourceDose: '20', targetDrug: 'cortisone' });
 
   const handlePk = (e) => setPkInputs({ ...pkInputs, [e.target.name]: e.target.value });
@@ -360,11 +368,11 @@ export default function App() {
     element.style.display = 'block';
     
     const opt = {
-      margin:        0.4,
-      filename:      `Laporan-Klinis-${patientName || 'Pasien'}.pdf`,
-      image:         { type: 'jpeg', quality: 0.98 },
+      margin:      0.4,
+      filename:    `Laporan-Klinis-${patientName || 'Pasien'}.pdf`,
+      image:       { type: 'jpeg', quality: 0.98 },
       html2canvas:   { scale: 2 },
-      jsPDF:         { unit: 'in', format: 'a4', orientation: 'portrait' }
+      jsPDF:       { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
 
     html2pdf().set(opt).from(element).save().then(() => {
@@ -387,6 +395,16 @@ export default function App() {
           }} 
         />
       )}
+
+      {/* COMMAND PALETTE MODAL (CTRL + K) */}
+      <CommandPaletteModal
+        isOpen={isCommandOpen}
+        onClose={() => setIsCommandOpen(false)}
+        onSelectCalculator={(tabId) => {
+          setActiveTab(tabId);
+          triggerToast(`Membuka modul: ${tabId.toUpperCase()}`, 'info');
+        }}
+      />
 
       {/* TOAST ALERT COMPONENT */}
       {toast.show && (
@@ -453,6 +471,9 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setIsCommandOpen(true)} className="p-2 rounded-lg bg-indigo-600 text-white text-xs font-bold" title="Cari Cepat (Ctrl+K)">
+            🔍
+          </button>
           <button onClick={() => setIsScannerOpen(true)} className="p-2 rounded-lg bg-emerald-600 text-white text-xs font-bold" title="Scanner Obat">
             📸
           </button>
@@ -480,62 +501,59 @@ export default function App() {
         setIsSidebarOpen={setIsSidebarOpen}
       />
 
-      <main className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full">
+      <main className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full space-y-6">
         <HospitalHeader
           hospitalInfo={hospitalInfo}
           setHospitalInfo={setHospitalInfo}
         />
 
-        {/* HEADER PASIEN DENGAN SHORTCUT DIREKTORI, VOICE, SCANNER & KEAMANAN */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-          <div className="flex-1 w-full">
-            <PatientHeader
-              patientName={patientName}
-              setPatientName={setPatientName}
-              patientId={patientId}
-              setPatientId={setPatientId}
-            />
-          </div>
-          <div className="hidden md:flex items-center gap-2 self-end mb-1">
+        {/* HEADER PASIEN DENGAN PATIENT CONTEXT BAR GLOBAL */}
+        <div className="flex flex-col gap-4">
+          <PatientContextBar 
+            onOpenDirectory={() => setIsPatientDirOpen(true)} 
+          />
+
+          <div className="hidden md:flex items-center justify-end gap-2">
+            <button
+              onClick={() => setIsCommandOpen(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer"
+              title="Cari Cepat (Ctrl + K)"
+            >
+              <span>🔍</span> Cari Modul (Ctrl+K)
+            </button>
             <button
               onClick={() => setIsScannerOpen(true)}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all text-xs whitespace-nowrap"
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer"
             >
               <span>📸</span> Scan Obat
             </button>
             <button
               onClick={() => setIsVoiceModalOpen(true)}
-              className="flex items-center gap-2 bg-teal-600 hover:bg-teal-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all text-xs whitespace-nowrap"
+              className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer"
             >
               <span>🎙️</span> Voice Notes
             </button>
             <button
-              onClick={() => setIsPatientDirOpen(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all text-xs whitespace-nowrap"
-            >
-              <span>📁</span> Direktori Pasien
-            </button>
-            <button
               onClick={() => setIsAuditModalOpen(true)}
-              className={`flex items-center gap-2 font-bold py-3 px-4 rounded-xl shadow-lg transition-all text-xs whitespace-nowrap border ${
+              className={`flex items-center gap-2 font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap border cursor-pointer ${
                 isDark ? 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
               }`}
             >
-              <span>🔒</span> Keamanan
+              <span>🔒</span> Keamanan ({userRole})
             </button>
           </div>
         </div>
 
         {/* BANNER HASIL TRANSKRIP SUARA JIKA ADA */}
         {voiceResult && (
-          <div className={`p-4 rounded-xl mb-4 flex items-center justify-between border ${
+          <div className={`p-4 rounded-2xl flex items-center justify-between border ${
             isDark ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
           }`}>
             <div className="text-xs">
               <span className="font-bold block mb-1">🎙️ Transkrip Suara Terakhir:</span>
               <p className="italic">"{voiceResult}"</p>
             </div>
-            <button onClick={() => setVoiceResult('')} className="text-xs font-bold px-2 py-1 bg-emerald-600 text-white rounded-lg">Tutup</button>
+            <button onClick={() => setVoiceResult('')} className="text-xs font-bold px-3 py-1.5 bg-emerald-600 text-white rounded-xl">Tutup</button>
           </div>
         )}
 
@@ -545,7 +563,7 @@ export default function App() {
         {/* CLINICAL OUTCOME TRACKER (TREND LAB PASIEN) */}
         <ClinicalOutcomeTracker />
 
-        <div className={`p-6 md:p-8 rounded-2xl shadow-xl mb-8 border transition-colors ${
+        <div className={`p-6 md:p-8 rounded-2xl shadow-xl border transition-colors ${
           isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-slate-200/50'
         }`}>
           <div className={`mb-6 border-b pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3 ${
@@ -563,13 +581,13 @@ export default function App() {
 
             {activeTab !== 'dashboard' && (
               <div className="flex items-center gap-2">
-                <button onClick={handleResetForm} className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
-                  isDark ? 'bg-slate-800 text-slate-400 hover:text-white border-slate-700' : 'bg-slate-100 text-slate-600 hover:text-slate-900 border-slate-300'
+                <button onClick={handleResetForm} className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
+                  isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300 border-slate-300'
                 }`}>
                   {t.resetBtn}
                 </button>
-                <button onClick={() => setShowInfo(true)} className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
-                  isDark ? 'bg-slate-800 text-blue-400 border-slate-700' : 'bg-blue-50 text-blue-600 border-blue-200'
+                <button onClick={() => setShowInfo(true)} className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
+                  isDark ? 'bg-blue-950/60 text-blue-400 border-blue-800 hover:bg-blue-900/60' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
                 }`}>
                   {t.infoBtn}
                 </button>
@@ -587,11 +605,11 @@ export default function App() {
           {activeTab === 'pk' && (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Target Conc (mg/L)</label><input type="number" name="targetConc" value={pkInputs.targetConc} onChange={handlePk} placeholder="e.g. 15" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Vd (L/kg)</label><input type="number" name="vd" value={pkInputs.vd} onChange={handlePk} placeholder="e.g. 0.7" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={pkInputs.weight} onChange={handlePk} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Clearance (L/jam)</label><input type="number" name="clearance" value={pkInputs.clearance} onChange={handlePk} placeholder="e.g. 3.0" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Interval (Jam)</label><input type="number" name="interval" value={pkInputs.interval} onChange={handlePk} placeholder="e.g. 8" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Target Conc (mg/L)</label><input type="number" name="targetConc" value={pkInputs.targetConc} onChange={handlePk} placeholder="e.g. 15" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Vd (L/kg)</label><input type="number" name="vd" value={pkInputs.vd} onChange={handlePk} placeholder="e.g. 0.7" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={pkInputs.weight} onChange={handlePk} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Clearance (L/jam)</label><input type="number" name="clearance" value={pkInputs.clearance} onChange={handlePk} placeholder="e.g. 3.0" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Interval (Jam)</label><input type="number" name="interval" value={pkInputs.interval} onChange={handlePk} placeholder="e.g. 8" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
               </div>
 
               <div className={`p-4 rounded-xl flex justify-between mb-4 border ${
@@ -606,10 +624,10 @@ export default function App() {
           {activeTab === 'drip' && (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Dosis Target (mcg/kg/min)</label><input type="number" name="dose" value={dripInputs.dose} onChange={handleDrip} placeholder="e.g. 5" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={dripInputs.weight} onChange={handleDrip} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jumlah Obat Dalam Vial/Ampul (mg)</label><input type="number" name="drugMg" value={dripInputs.drugMg} onChange={handleDrip} placeholder="e.g. 250" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Volume Pelarut Syringe Pump (mL)</label><input type="number" name="volumeMl" value={dripInputs.volumeMl} onChange={handleDrip} placeholder="e.g. 50" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Dosis Target (mcg/kg/min)</label><input type="number" name="dose" value={dripInputs.dose} onChange={handleDrip} placeholder="e.g. 5" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={dripInputs.weight} onChange={handleDrip} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jumlah Obat Dalam Vial/Ampul (mg)</label><input type="number" name="drugMg" value={dripInputs.drugMg} onChange={handleDrip} placeholder="e.g. 250" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Volume Pelarut Syringe Pump (mL)</label><input type="number" name="volumeMl" value={dripInputs.volumeMl} onChange={handleDrip} placeholder="e.g. 50" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
               </div>
 
               <div className={`p-4 rounded-xl text-center mb-4 border ${
@@ -619,7 +637,7 @@ export default function App() {
                 <span className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{drip} mL/jam</span>
               </div>
               {drip > 50 && (
-                <div className="bg-amber-500/10 border border-amber-500/40 p-3 rounded-lg text-amber-600 font-medium text-xs">
+                <div className="bg-amber-500/10 border border-amber-500/40 p-3 rounded-xl text-amber-600 font-medium text-xs">
                   ⚠️ <strong>WARNING:</strong> Kecepatan Drip Tinggi ({drip} mL/jam). Pertimbangkan Vena Sentral (CVC)!
                 </div>
               )}
@@ -641,7 +659,6 @@ export default function App() {
           {activeTab === 'label_print' && <PrescriptionEtiquetteCalculator />}
           {activeTab === 'hd_dose' && <HemodialysisDoseCalculator />}
           
-          {/* MODUL HEPAR & DIABETES */}
           {activeTab === 'hepar' && <ChildPughCalculator />}
           {activeTab === 'diabetes' && <DiabetesCalculator />}
 
@@ -680,10 +697,10 @@ export default function App() {
           {activeTab === 'renal' && (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Usia (Tahun)</label><input type="number" name="age" value={renalInputs.age} onChange={handleRenal} placeholder="e.g. 55" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={renalInputs.weight} onChange={handleRenal} placeholder="e.g. 65" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Serum Creatinine (mg/dL)</label><input type="number" name="scr" value={renalInputs.scr} onChange={handleRenal} placeholder="e.g. 1.2" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={renalInputs.gender} onChange={handleRenal} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Usia (Tahun)</label><input type="number" name="age" value={renalInputs.age} onChange={handleRenal} placeholder="e.g. 55" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={renalInputs.weight} onChange={handleRenal} placeholder="e.g. 65" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Serum Creatinine (mg/dL)</label><input type="number" name="scr" value={renalInputs.scr} onChange={handleRenal} placeholder="e.g. 1.2" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={renalInputs.gender} onChange={handleRenal} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
               </div>
 
               <div className={`p-4 rounded-xl flex justify-between mb-4 border ${
@@ -709,9 +726,9 @@ export default function App() {
           {activeTab === 'anthro' && (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Tinggi Badan (cm)</label><input type="number" name="height" value={anthroInputs.height} onChange={handleAnthro} placeholder="e.g. 165" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={anthroInputs.weight} onChange={handleAnthro} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={anthroInputs.gender} onChange={handleAnthro} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Tinggi Badan (cm)</label><input type="number" name="height" value={anthroInputs.height} onChange={handleAnthro} placeholder="e.g. 165" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={anthroInputs.weight} onChange={handleAnthro} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={anthroInputs.gender} onChange={handleAnthro} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
               </div>
 
               <div className={`grid grid-cols-3 gap-2 p-4 rounded-2xl text-center mb-4 border ${
@@ -727,12 +744,12 @@ export default function App() {
           {activeTab === 'kalori' && (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Usia (Tahun)</label><input type="number" name="age" value={tdeeInputs.age} onChange={handleTdee} placeholder="e.g. 24" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>TB (cm)</label><input type="number" name="height" value={tdeeInputs.height} onChange={handleTdee} placeholder="e.g. 170" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={tdeeInputs.weight} onChange={handleTdee} placeholder="e.g. 70" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={tdeeInputs.gender} onChange={handleTdee} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Usia (Tahun)</label><input type="number" name="age" value={tdeeInputs.age} onChange={handleTdee} placeholder="e.g. 24" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>TB (cm)</label><input type="number" name="height" value={tdeeInputs.height} onChange={handleTdee} placeholder="e.g. 170" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={tdeeInputs.weight} onChange={handleTdee} placeholder="e.g. 70" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={tdeeInputs.gender} onChange={handleTdee} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
                 <div>
-                  <label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Tingkat Aktivitas Harian</label>
+                  <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Tingkat Aktivitas Harian</label>
                   <select name="activityLevel" value={tdeeInputs.activityLevel} onChange={handleTdee} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}>
                     <option value="1.2">Sedentary (Jarang Olahraga)</option>
                     <option value="1.375">Light Activity (Olahraga Ringan 1-3x/mg)</option>
@@ -741,7 +758,7 @@ export default function App() {
                   </select>
                 </div>
                 <div>
-                  <label className={`block text-xs mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>🎯 Target Goal Pasien / User</label>
+                  <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>🎯 Target Goal Pasien / User</label>
                   <select name="goal" value={tdeeInputs.goal} onChange={handleTdee} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}>
                     <option value="fat_loss">📉 Fat Loss / Diet Defisit (Turun BB)</option>
                     <option value="maintain">⚖️ Maintenance (Jaga Berat Badan)</option>
@@ -774,25 +791,25 @@ export default function App() {
             </div>
           )}
 
-          {/* ACTION BUTTONS (Hidden in Dashboard view) */}
+          {/* ACTION BUTTONS (STANDAR TOMBOL: PRIMARY BIRU, SUCCESS HIJAU) */}
           {activeTab !== 'dashboard' && (
             <div className={`mt-8 border-t pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 ${
               isDark ? 'border-slate-800' : 'border-slate-200'
             }`}>
               <button
                 onClick={handleCopySummary}
-                className={`w-full sm:w-auto font-bold py-3 px-5 rounded-xl border transition-all flex items-center justify-center gap-2 text-xs ${
-                  isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+                className={`w-full sm:w-auto font-bold py-3 px-6 rounded-xl border transition-all flex items-center justify-center gap-2 text-xs cursor-pointer ${
+                  isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-200 hover:bg-slate-300 text-slate-800 border-slate-300'
                 }`}
               >
-                {t.copySaveBtn}
+                📋 {t.copySaveBtn}
               </button>
 
               <button
                 onClick={handleDownloadPDF}
-                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-xs"
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs cursor-pointer"
               >
-                {t.downloadPdfBtn}
+                📥 {t.downloadPdfBtn}
               </button>
             </div>
           )}
@@ -812,7 +829,7 @@ export default function App() {
         patientId={patientId}
       />
 
-      {/* MODAL POPUP INFO RUMUS */}
+      {/* MODAL INFO RUMUS */}
       {showInfo && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className={`border p-6 rounded-2xl max-w-md w-full shadow-2xl relative ${
@@ -837,14 +854,14 @@ export default function App() {
                 </p>
               </div>
             </div>
-            <button onClick={() => setShowInfo(false)} className="mt-6 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all">
+            <button onClick={() => setShowInfo(false)} className="mt-6 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer">
               Tutup & Kembali
             </button>
           </div>
         </div>
       )}
 
-      {/* TEMPLATE PDF DINAMIS (SEMUA MODUL MENAMPILKAN DATA DETAIL) */}
+      {/* TEMPLATE PDF DINAMIS */}
       <div id="pdf-template" style={{ display: 'none' }} className="p-8 bg-white text-black font-sans text-xs">
         <div style={{ borderBottom: '3px double #000', paddingBottom: '12px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '15px' }}>
@@ -932,56 +949,7 @@ export default function App() {
                   <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Makronutrisi (Protein / Carbs / Fat)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{dietPlan.protein}g / {dietPlan.carbs}g / {dietPlan.fat}g</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Gram/hari</td></tr>
                 </>
               )}
-              {activeTab === 'hepar' && (
-                <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul Evaluasi</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>Child-Pugh & MELD Score</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Hepatology Score</td></tr>
-                  <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Status Sirosis & Prognosis</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>Tersedia di Panel Aktif</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Klinis Hepar</td></tr>
-                </>
-              )}
-              {activeTab === 'diabetes' && (
-                <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul Endokrin</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>Manajemen Diabetes & Insulin</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Endocrine Management</td></tr>
-                  <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Parameter Kalkulasi</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#059669' }}>eAG, ISF & ICR Dinamis</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Glikemik Kontrol</td></tr>
-                </>
-              )}
-              {activeTab === 'triage' && (
-                <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul IGD</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>Triase IGD (ATS)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Emergency Triage</td></tr>
-                  <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Kategori Kegawatdaruratan</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#dc2626' }}>Skala ATS 1 s.d 5 Terpilih</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Prioritas Respon</td></tr>
-                </>
-              )}
-              {activeTab === 'fluid' && (
-                <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul Cairan & Luka Bakar</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>Holliday-Segar & Parkland Formula</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Resusitasi Cairan</td></tr>
-                </>
-              )}
-              {activeTab === 'gcs' && (
-                <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul Neurologi</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>Glasgow Coma Scale (GCS)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Kesadaran Pasien</td></tr>
-                </>
-              )}
-              {activeTab === 'framingham' && (
-                <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul Kardiologi</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>Framingham 10-Year PVD Risk Score</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Risiko Kardiovaskular</td></tr>
-                </>
-              )}
-              {activeTab === 'abx_dose' && (
-                <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul Antimikroba</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>Penyesuaian Dosis Antibiotik Berbasis ClCr</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Renal Dosing</td></tr>
-                </>
-              )}
-              {activeTab === 'steroid' && (
-                <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Dosis & Obat Asal</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{steroidInputs.sourceDose || 0} mg {steroidInputs.sourceDrug}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Regimen Awal</td></tr>
-                  <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>Target Konversi Steroid</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>Dosis Setara Anti-inflamasi</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', color: '#1e40af' }}>Equipotent Dose</td></tr>
-                </>
-              )}
-              {activeTab === 'nti' && (
-                <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul TDM / NTI</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{ntiSubTab === 'vancomycin' ? `${vancoAuc} mg·hr/L (Vancomycin AUC)` : 'Terapi Sempit Terpilih'}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Therapeutic Drug Monitoring</td></tr>
-                </>
-              )}
-              {!['dashboard', 'pk', 'drip', 'renal', 'anthro', 'kalori', 'hepar', 'diabetes', 'triage', 'fluid', 'gcs', 'framingham', 'abx_dose', 'steroid', 'nti'].includes(activeTab) && (
+              {!['dashboard', 'pk', 'drip', 'renal', 'anthro', 'kalori'].includes(activeTab) && (
                 <>
                   <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Modul Aktif</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{activeTab.toUpperCase()} Evaluasi Klinis</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Standar Rumah Sakit</td></tr>
                 </>

@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { usePatientStore } from '../store/usePatientStore';
 
 export default function StoppStartCalculator() {
   const { theme } = useTheme();
   const { lang } = useLanguage();
   const isDark = theme === 'dark';
+
+  // Ambil data pasien global dari store atas
+  const { patient } = usePatientStore();
 
   // Daftar Kriteria STOPP (Potentially Inappropriate Medications in Older People)
   const stoppCriteriaList = [
@@ -29,6 +33,13 @@ export default function StoppStartCalculator() {
   const [checkedStopp, setCheckedStopp] = useState({});
   const [checkedStart, setCheckedStart] = useState({});
 
+  // Auto-sync status usia (opsional untuk indikator geriatri)
+  useEffect(() => {
+    if (patient && patient.age !== '') {
+      // Data usia tersedia untuk asesmen klinis geriatri
+    }
+  }, [patient]);
+
   const handleToggleStopp = (id) => {
     setCheckedStopp({ ...checkedStopp, [id]: !checkedStopp[id] });
   };
@@ -42,6 +53,14 @@ export default function StoppStartCalculator() {
 
   return (
     <div className="space-y-6">
+      
+      {patient.patientName && (
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between text-xs">
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Skrining farmakoterapi geriatri STOPP/START.</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Active</span>
+        </div>
+      )}
+
       <div className={`p-4 rounded-xl border text-xs ${
         isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-blue-50 border-blue-200 text-slate-700'
       }`}>

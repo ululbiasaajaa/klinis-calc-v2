@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { usePatientStore } from '../store/usePatientStore';
 
 export default function HemodialysisDoseCalculator() {
   const { theme } = useTheme();
   const { lang } = useLanguage();
   const isDark = theme === 'dark';
+
+  // Ambil data pasien global dari store atas
+  const { patient } = usePatientStore();
 
   // Database Sampel Obat Umum di HD
   const hdDrugDatabase = [
@@ -58,6 +62,14 @@ export default function HemodialysisDoseCalculator() {
 
   return (
     <div className="space-y-6">
+      
+      {patient.patientName && (
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between text-xs">
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Evaluasi penyesuaian dosis obat Hemodialisis.</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Active</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* PILIH OBAT DARI DATABASE */}
         <div>
@@ -166,7 +178,7 @@ export default function HemodialysisDoseCalculator() {
           </div>
         )}
         <p className={`leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-          • <strong>Prinsip Utama:</strong> Waktu pemberian obat idealnya diberikan **SETELAH (Post-HD)** sesi cuci darah selesai, agar obat tidak tereliminasi sia-sia oleh mesin dialiser.<br />
+          • <strong>Prinsip Utama:</strong> Waktu pemberian obat idealnya diberikan <strong>SETELAH (Post-HD)</strong> sesi cuci darah selesai, agar obat tidak tereliminasi sia-sia oleh mesin dialiser.<br />
           • <strong>Faktor Dialyzability:</strong> Obat yang mudah terbuang lewat HD umumnya berukuran molekul kecil (&lt;500 Da), *Protein Binding* rendah (&lt;80%), dan *Volume Distribution* kecil (&lt;1 L/kg).
         </p>
       </div>

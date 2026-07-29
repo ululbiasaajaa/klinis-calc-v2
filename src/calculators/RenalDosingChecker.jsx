@@ -11,9 +11,9 @@ export default function RenalDosingChecker() {
   const { patient } = usePatientStore();
   const [inputs, setInputs] = useState({ clcr: '45' });
 
-  // Auto-sync & hitung otomatis dari Patient Context Bar
+  // Auto-sync & hitung otomatis dari Patient Context Bar setiap data pasien berubah
   useEffect(() => {
-    if (patient.serumCreatinine !== '' && patient.age !== '' && patient.weightKg !== '') {
+    if (patient) {
       const age = Number(patient.age);
       const wt = Number(patient.weightKg);
       const scr = Number(patient.serumCreatinine);

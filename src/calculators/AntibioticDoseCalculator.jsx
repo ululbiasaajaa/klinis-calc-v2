@@ -13,20 +13,18 @@ export default function AntibioticDoseCalculator() {
   const [antibiotic, setAntibiotic] = useState('meropenem');
   const [clcrInput, setClcrInput] = useState('65'); // ml/min
 
-  // Auto-sync & hitung otomatis ClCr dari Patient Context Bar
+  // Auto-sync & hitung otomatis ClCr secara real-time dari Patient Context Bar
   useEffect(() => {
     if (patient) {
-      if (patient.serumCreatinine !== '' && patient.age !== '' && patient.weightKg !== '') {
-        const age = Number(patient.age);
-        const wt = Number(patient.weightKg);
-        const scr = Number(patient.serumCreatinine);
-        const isFemale = patient.gender === 'Perempuan';
+      const age = Number(patient.age);
+      const wt = Number(patient.weightKg);
+      const scr = Number(patient.serumCreatinine);
+      const isFemale = patient.gender === 'Perempuan';
 
-        if (age > 0 && wt > 0 && scr > 0) {
-          let calcClCr = ((140 - age) * wt) / (72 * scr);
-          if (isFemale) calcClCr *= 0.85;
-          setClcrInput(calcClCr.toFixed(1));
-        }
+      if (age > 0 && wt > 0 && scr > 0) {
+        let calcClCr = ((140 - age) * wt) / (72 * scr);
+        if (isFemale) calcClCr *= 0.85;
+        setClcrInput(calcClCr.toFixed(1));
       }
     }
   }, [patient]);

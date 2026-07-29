@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { usePatientStore } from '../store/usePatientStore';
 
 export default function SteroidConversionCalculator() {
   const { theme } = useTheme();
   const { lang } = useLanguage();
   const isDark = theme === 'dark';
+
+  // Ambil data pasien global dari store atas
+  const { patient } = usePatientStore();
 
   // Tabel Equivalensi Steroid (Standar Referensi Klinis)
   // Dosis setara dengan 5 mg Prednison / Prednisolone
@@ -43,6 +47,14 @@ export default function SteroidConversionCalculator() {
 
   return (
     <div className="space-y-6">
+      
+      {patient.patientName && (
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between text-xs">
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Evaluasi konversi dosis kortikosteroid.</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Active</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* STEROID ASAL */}
         <div>

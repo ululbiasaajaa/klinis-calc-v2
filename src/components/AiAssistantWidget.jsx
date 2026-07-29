@@ -40,23 +40,31 @@ export default function AiAssistantWidget({ currentInputs, activeTab, patientNam
 
       const lower = query.toLowerCase();
 
-      // RANGKUMAN SMART CONTEXT DARI LAYAR
+      // RANGKUMAN SMART CONTEXT DARI LAYAR (LENGKAP SEMUA MODUL)
       const activeModuleNames = {
+        dashboard: 'Dashboard Analitik',
         pk: 'Farmakokinetik (Loading & Maintenance)',
         drip: 'Dosis Drip / Syringe Pump',
+        abx_dose: 'Penyesuaian Dosis Antibiotik (ClCr)',
         peds_geri: 'Pediatrik & Geriatri',
         stopp_start: 'Screening Geriatri STOPP/START',
         crrt: 'Dosis ICU & CRRT',
-        electro: 'Koreksi Elektrolit Darurat',
-        ards: 'Evaluasi ARDS & AGD',
+        framingham: 'Risiko Jantung (Framingham 10-Yr)',
+        gcs: 'Neurologi IGD (GCS & Kesadaran)',
+        triage: 'Triase IGD (Australasian Triage Scale)',
+        fluid: 'Terapi Cairan & Luka Bakar (Parkland)',
+        electro: 'Koreksi Elektrolit Darurat (IGD)',
+        ards: 'Evaluasi ARDS & AGD (ICU)',
         pregnancy: 'Usia Kehamilan & HPL (Obgin)',
         renal_dose: 'Auto-Checker Dosis Ginjal',
-        label_print: 'Cetak Etiket & Resep',
-        hd_dose: 'Dosis Hemodialisis (HD)',
+        label_print: 'Cetak Etiket & Resep Obat',
+        hd_dose: 'Dosis Pasien Cuci Darah (HD)',
+        hepar: 'Evaluasi Hepar (Child-Pugh & MELD)',
+        diabetes: 'Manajemen Diabetes & Insulin',
         steroid: 'Konversi Dosis Steroid',
         nti: 'Obat Terapi Sempit (NTI / TDM)',
-        tdm_chart: 'Grafik Trend TDM',
-        ddi: 'Cek Interaksi Obat (DDI)',
+        tdm_chart: 'Grafik Trend Monitoring TDM',
+        ddi: 'Cek Interaksi Obat (DDI High-Risk)',
         renal: 'Fungsi Ginjal (ClCr & eGFR)',
         anthro: 'Antropometri (BSA, BMI, Parkland)',
         kalori: 'Kalori Harian & Diet Plan'

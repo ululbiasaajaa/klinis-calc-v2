@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { usePatientStore } from '../store/usePatientStore';
 
 export default function ElectrolyteCorrectionCalculator() {
   const { theme } = useTheme();
   const { lang } = useLanguage();
   const isDark = theme === 'dark';
+
+  // Ambil data pasien global dari store atas
+  const { patient } = usePatientStore();
 
   const [subTab, setSubTab] = useState('k'); // 'k', 'na', 'hco3'
 
@@ -18,31 +22,39 @@ export default function ElectrolyteCorrectionCalculator() {
   // Input Asidosis Metabolik (HCO3-)
   const [hco3Inputs, setHco3Inputs] = useState({ weight: '60', currentHco3: '12' });
 
+  // Auto-sync data berat badan dan jenis kelamin dari Patient Context Bar
+  useEffect(() => {
+    if (patient) {
+      const wtStr = patient.weightKg !== '' ? String(patient.weightKg) : '';
+      const isFemale = patient.gender === 'Perempuan';
+      const mappedGender = isFemale ? 'female' : 'male';
+
+      if (wtStr) {
+        setKInputs((prev) => ({ ...prev, weight: wtStr }));
+        setNaInputs((prev) => ({ ...prev, weight: wtStr, gender: mappedGender }));
+        setHco3Inputs((prev) => ({ ...prev, weight: wtStr }));
+      }
+    }
+  }, [patient]);
+
   // 1. Hitung Koreksi Kalium (KCl)
-  // Defisit K+ = (K_target - K_current) * 0.4 * BB (Extracellular shift approximation, total deficit ~ total body water * delta K)
-  // Aturan umum klinis: Setiap penurunan 0.1 mEq/L di bawah 4.0 setara dengan defisit ~ 100 mEq total body (atau rumus empiris: (K_target - K_current) * BB * 0.4)
   const kDeficit = (() => {
     const { weight, currentK, targetK } = kInputs;
     if (!weight || !currentK || !targetK) return 0;
     const diff = parseFloat(targetK) - parseFloat(currentK);
     if (diff <= 0) return 0;
-    // Estimasi kasar klinis: Devisit total (mEq) = diff * BB * 0.4 (atau faktor distribusi cairan ekstraseluler)
     return Number((diff * parseFloat(weight) * 0.4).toFixed(1));
   })();
 
-  // 2. Hitung Koreksi Natrium (NaCl 3%) - Rumus Adrogue-Madias atau Devisiat TBW
-  // TBW = 0.6 * BB (Laki-laki) atau 0.5 * BB (Perempuan)
-  // Na change per liter infus = (Na_infus - Na_current) / (TBW + 1)
+  // 2. Hitung Koreksi Natrium (NaCl 3%)
   const naCorrection = (() => {
     const { weight, currentNa, gender, targetNaIncrease } = naInputs;
     if (!weight || !currentNa) return { totalMl: 0, hourlyRate: 0, maxSafeRise: 8 };
     const tbw = parseFloat(weight) * (gender === 'female' ? 0.5 : 0.6);
-    // Konsentrasi Na dalam NaCl 3% = 513 mEq/L
     const naInfus = 513;
     const curNa = parseFloat(currentNa);
-    const deltaNa = parseFloat(targetNaIncrease) || 6; // misal target naik 6 mEq/L dalam 24 jam
+    const deltaNa = parseFloat(targetNaIncrease) || 6;
     
-    // Volume NaCl 3% (mL) = [Delta Na * TBW * 1000] / (Na_infus - Na_current)
     const denominator = naInfus - curNa;
     if (denominator <= 0) return { totalMl: 0, hourlyRate: 0, maxSafeRise: 8 };
     
@@ -52,27 +64,32 @@ export default function ElectrolyteCorrectionCalculator() {
     return {
       totalMl: Number(totalMlVal.toFixed(0)),
       hourlyRate: Number(hourlyRateVal.toFixed(1)),
-      maxSafeRise: 8 // Batas aman maksimal kenaikan Na per 24 jam untuk cegah ODS (Osmotic Demyelination Syndrome)
+      maxSafeRise: 8
     };
   })();
 
   // 3. Hitung Devisit Bikarbonat (NaHCO3 8.4%)
-  // Devisit HCO3 = 0.5 * BB * (HCO3_target - HCO3_current) -> Target aman awal ~ 18-20 mEq/L
   const hco3Deficit = (() => {
     const { weight, currentHco3 } = hco3Inputs;
     if (!weight || !currentHco3) return 0;
     const curHco3 = parseFloat(currentHco3);
-    const targetHco3 = 18.0; // Target darurat awal
+    const targetHco3 = 18.0;
     const diff = targetHco3 - curHco3;
     if (diff <= 0) return 0;
-    // 0.5 * BB * diff (mEq)
     const mEqVal = 0.5 * parseFloat(weight) * diff;
-    // NaHCO3 8.4% mengandung 1 mEq/mL
     return Number(mEqVal.toFixed(1));
   })();
 
   return (
     <div className="space-y-6">
+      
+      {patient.patientName && (
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between text-xs">
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Berat badan & jenis kelamin tersinkronisasi otomatis.</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Synced</span>
+        </div>
+      )}
+
       <div className={`p-4 rounded-xl border text-xs ${
         isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-blue-50 border-blue-200 text-slate-700'
       }`}>

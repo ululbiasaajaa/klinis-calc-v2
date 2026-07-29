@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { usePatientStore } from '../store/usePatientStore';
 
 export default function DiabetesCalculator() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  // Ambil data pasien global dari store atas
+  const { patient } = usePatientStore();
 
   // State untuk Konversi HbA1c ke eAG
   const [hba1c, setHba1c] = useState('7.0');
@@ -11,11 +15,22 @@ export default function DiabetesCalculator() {
   // State untuk Koreksi Insulin (ISF / Correction Factor)
   const [currentBg, setCurrentBg] = useState('250');
   const [targetBg, setTargetBg] = useState('150');
-  const [insulinType, setInsulinType] = useState('rapid'); // 'rapid' (1500 rule) atau 'regular' (1800 rule - wait, 1800 is rapid, 1500 is regular)
+  const [insulinType, setInsulinType] = useState('rapid'); // 'rapid' (1800 rule) atau 'regular' (1500 rule)
 
   // State untuk Insulin-to-Carb Ratio (ICR)
   const [carbsGrams, setCarbsGrams] = useState('60');
   const [tdd, setTdd] = useState('40'); // Total Daily Dose Insulin
+
+  // Auto-sync berat badan dari Patient Context Bar untuk estimasi TDD (Default 0.5 unit/kg)
+  useEffect(() => {
+    if (patient && patient.weightKg !== '') {
+      const wt = parseFloat(patient.weightKg);
+      if (wt > 0) {
+        const estimatedTdd = Math.round(wt * 0.5);
+        setTdd(String(estimatedTdd));
+      }
+    }
+  }, [patient]);
 
   // 1. Kalkulasi HbA1c ke eAG (Formula ADA: eAG = 28.7 * HbA1c - 46.7)
   const eagVal = (() => {
@@ -32,7 +47,7 @@ export default function DiabetesCalculator() {
 
     if (totalDose <= 0) return { isf: 0, correctionDose: 0 };
 
-    // Aturan 1500 untuk Insulin Regular, Aturan 1800 untuk Insulin Rapid-Acting (Lispro/Aspart/Glulisine)
+    // Aturan 1500 untuk Insulin Regular, Aturan 1800 untuk Insulin Rapid-Acting
     const ruleConstant = insulinType === 'rapid' ? 1800 : 1500;
     const calculatedIsf = ruleConstant / totalDose;
 
@@ -69,6 +84,13 @@ export default function DiabetesCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
+      {patient.patientName && (
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Estimasi TDD dihitung otomatis dari berat badan pasien.</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Synced</span>
+        </div>
+      )}
+
       {/* BAGIAN 1: HbA1c & eAG CONVERTER */}
       <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
         <h3 className="font-bold text-blue-500 mb-2">📉 1. Konversi HbA1c ke Estimated Average Glucose (eAG)</h3>

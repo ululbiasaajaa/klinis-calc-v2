@@ -41,42 +41,44 @@ export default function NtiCalculator() {
   // 6. Renal Dosing Checker States
   const [renalInputs, setRenalInputs] = useState({ clcr: '45' });
 
-  // Auto-sync data dari Patient Context Bar ke semua kalkulator di bawah
+  // Auto-sync data dari Patient Context Bar secara real-time ke semua kalkulator NTI & Renal Dosing
   useEffect(() => {
     if (patient) {
-      if (patient.weightKg !== '') {
-        setVancoWeight(String(patient.weightKg));
-        setAminoWeight(String(patient.weightKg));
+      if (patient.weightKg !== undefined && patient.weightKg !== '') {
+        const wtStr = String(patient.weightKg);
+        setVancoWeight(wtStr);
+        setAminoWeight(wtStr);
       }
-      if (patient.serumCreatinine !== '') {
-        setVancoScr(String(patient.serumCreatinine));
-        setAminoScr(String(patient.serumCreatinine));
+      if (patient.serumCreatinine !== undefined && patient.serumCreatinine !== '') {
+        const scrStr = String(patient.serumCreatinine);
+        setVancoScr(scrStr);
+        setAminoScr(scrStr);
       }
-      if (patient.age !== '') {
-        setVancoAge(String(patient.age));
-        setAminoAge(String(patient.age));
+      if (patient.age !== undefined && patient.age !== '') {
+        const ageStr = String(patient.age);
+        setVancoAge(ageStr);
+        setAminoAge(ageStr);
       }
-      if (patient.heightCm !== '') {
+      if (patient.heightCm !== undefined && patient.heightCm !== '') {
         setAminoHeight(String(patient.heightCm));
       }
       if (patient.gender) {
         const isFemale = patient.gender === 'Perempuan';
-        setVancoGender(isFemale ? 'female' : 'male');
-        setAminoGender(isFemale ? 'female' : 'male');
+        const genderVal = isFemale ? 'female' : 'male';
+        setVancoGender(genderVal);
+        setAminoGender(genderVal);
       }
 
-      // Auto-hitung ClCr untuk Renal Dosing jika data lengkap
-      if (patient.serumCreatinine !== '' && patient.age !== '' && patient.weightKg !== '') {
-        const age = Number(patient.age);
-        const wt = Number(patient.weightKg);
-        const scr = Number(patient.serumCreatinine);
-        const isFemale = patient.gender === 'Perempuan';
+      // Auto-hitung ClCr untuk Renal Dosing & Vancomycin/Aminoglycoside jika parameter lengkap
+      const ageNum = Number(patient.age);
+      const wtNum = Number(patient.weightKg);
+      const scrNum = Number(patient.serumCreatinine);
+      const isFemaleVal = patient.gender === 'Perempuan';
 
-        if (age > 0 && wt > 0 && scr > 0) {
-          let calcClCr = ((140 - age) * wt) / (72 * scr);
-          if (isFemale) calcClCr *= 0.85;
-          setRenalInputs({ clcr: calcClCr.toFixed(1) });
-        }
+      if (ageNum > 0 && wtNum > 0 && scrNum > 0) {
+        let calcClCr = ((140 - ageNum) * wtNum) / (72 * scrNum);
+        if (isFemaleVal) calcClCr *= 0.85;
+        setRenalInputs({ clcr: calcClCr.toFixed(1) });
       }
     }
   }, [patient]);

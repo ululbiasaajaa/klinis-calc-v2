@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { usePatientStore } from '../store/usePatientStore';
 
 export default function TriageCalculator() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  // Ambil data pasien global dari store atas
+  const { patient } = usePatientStore();
 
   // State untuk pilihan kategori triase berdasarkan asesmen klinis cepat
   const [selectedCategory, setSelectedCategory] = useState('cat1');
@@ -89,6 +93,13 @@ export default function TriageCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
+      {patient.patientName && (
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Asesmen triase & kegawatdaruratan IGD.</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Active</span>
+        </div>
+      )}
+
       {/* HEADER INFORMASI */}
       <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
         <h3 className="font-bold text-blue-500 mb-2">🚑 Asisten Triase IGD (Australasian Triage Scale - ATS)</h3>

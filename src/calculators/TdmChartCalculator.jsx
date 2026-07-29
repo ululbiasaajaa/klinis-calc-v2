@@ -10,6 +10,8 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import { useTheme } from '../context/ThemeContext';
+import { usePatientStore } from '../store/usePatientStore';
 
 ChartJS.register(
   CategoryScale,
@@ -31,6 +33,12 @@ const DRUG_TARGETS = {
 };
 
 export default function TdmChartCalculator() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
+  // Ambil data pasien global dari store atas
+  const { patient } = usePatientStore();
+
   const [selectedDrug, setSelectedDrug] = useState('vancomycin');
   const [dataPoints, setDataPoints] = useState([
     { label: 'Hari 1 (08:00)', value: '11.5' },
@@ -43,7 +51,7 @@ export default function TdmChartCalculator() {
 
   const target = DRUG_TARGETS[selectedDrug];
 
-  // TAMBAH TIPIK KADAR OBAT BARU
+  // TAMBAH TITIK KADAR OBAT BARU
   const handleAddPoint = (e) => {
     e.preventDefault();
     if (!newLabel || !newValue) return;
@@ -132,6 +140,14 @@ export default function TdmChartCalculator() {
 
   return (
     <div className="space-y-6">
+      
+      {patient.patientName && (
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between text-xs">
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Pemantauan TDM (Therapeutic Drug Monitoring).</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Active</span>
+        </div>
+      )}
+
       {/* SELEKSI OBAT NTI */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>

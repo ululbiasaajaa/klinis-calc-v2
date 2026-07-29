@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { usePatientStore } from '../store/usePatientStore';
 
 export default function PregnancyCalculator() {
   const { theme } = useTheme();
   const { lang } = useLanguage();
   const isDark = theme === 'dark';
+
+  // Ambil data pasien global dari store atas
+  const { patient } = usePatientStore();
 
   // Default HPHT (Hari Pertama Haid Terakhir) diset ke beberapa bulan lalu
   const [hpht, setHpht] = useState(() => {
@@ -13,6 +17,16 @@ export default function PregnancyCalculator() {
     d.setMonth(d.getMonth() - 3); // Default 3 bulan lalu
     return d.toISOString().split('T')[0];
   });
+
+  // Auto-sync data dari Patient Context Bar jika tersedia
+  useEffect(() => {
+    if (patient) {
+      // Jika di store pasien ada properti hpht, sinkronkan di sini
+      if (patient.hpht) {
+        setHpht(patient.hpht);
+      }
+    }
+  }, [patient]);
 
   const calculationResult = (() => {
     if (!hpht) return null;
@@ -70,6 +84,14 @@ export default function PregnancyCalculator() {
 
   return (
     <div className="space-y-6">
+      
+      {patient.patientName && (
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between text-xs">
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Kalkulator usia kehamilan & HPL.</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Active</span>
+        </div>
+      )}
+
       <div className={`p-4 rounded-xl border text-xs ${
         isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-blue-50 border-blue-200 text-slate-700'
       }`}>

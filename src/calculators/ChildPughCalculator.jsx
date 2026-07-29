@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { usePatientStore } from '../store/usePatientStore';
 
 export default function ChildPughCalculator() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
+  // Ambil data pasien global dari store atas
+  const { patient } = usePatientStore();
+
   // State untuk Child-Pugh Score
   const [encephalopathy, setEncephalopathy] = useState('1'); 
-  const [ascites, setAscites] = useState('1');           
-  const [bilirubinCP, setBilirubinCP] = useState('2');         
-  const [albumin, setAlbumin] = useState('2');           
-  const [inrCP, setInrCP] = useState('1');                   
+  const [ascites, setAscites] = useState('1');          
+  const [bilirubinCP, setBilirubinCP] = useState('2');        
+  const [albumin, setAlbumin] = useState('2');          
+  const [inrCP, setInrCP] = useState('1');                    
 
   // State untuk MELD Score (Membutuhkan angka lab aktual)
   const [meldBili, setMeldBili] = useState('1.5');
@@ -77,6 +81,13 @@ export default function ChildPughCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
+      {patient.patientName && (
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Evaluasi fungsi hepar & sirosis.</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Active</span>
+        </div>
+      )}
+
       {/* BAGIAN 1: CHILD-PUGH SCORE */}
       <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
         <h3 className="font-bold text-blue-500 mb-2">🫀 1. Kalkulator Child-Pugh Score (Sirosis & Fungsi Hepar)</h3>

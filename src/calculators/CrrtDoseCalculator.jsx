@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { usePatientStore } from '../store/usePatientStore';
 
 export default function CrrtDoseCalculator() {
   const { theme } = useTheme();
   const { lang } = useLanguage();
   const isDark = theme === 'dark';
+
+  // Ambil data pasien global dari store atas
+  const { patient } = usePatientStore();
 
   // Database Sampel Antibiotik ICU & CRRT
   const crrtDrugDatabase = [
@@ -19,6 +23,13 @@ export default function CrrtDoseCalculator() {
   const [selectedDrug, setSelectedDrug] = useState('meropenem');
   const [effluentRate, setEffluentRate] = useState('35'); // mL/kg/hr (Standard CRRT dose 20-35)
   const [residualUrine, setResidualUrine] = useState('low'); // 'zero', 'low', 'normal'
+
+  // Auto-sync data berat badan dari Patient Context Bar (jika diperlukan untuk referensi dosis total)
+  useEffect(() => {
+    if (patient && patient.weightKg !== '') {
+      // Data pasien tersedia di Patient Context Bar
+    }
+  }, [patient]);
 
   const drugInfo = crrtDrugDatabase.find((d) => d.id === selectedDrug) || crrtDrugDatabase[0];
 
@@ -46,6 +57,14 @@ export default function CrrtDoseCalculator() {
 
   return (
     <div className="space-y-6">
+      
+      {patient.patientName && (
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between text-xs">
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Evaluasi dosis CRRT & antibiotik ICU.</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Synced</span>
+        </div>
+      )}
+
       <div className={`p-4 rounded-xl border text-xs ${
         isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-blue-50 border-blue-200 text-slate-700'
       }`}>
@@ -134,7 +153,7 @@ export default function CrrtDoseCalculator() {
           💡 Prinsip Farmakodinamik (PK/PD) Antibiotik di ICU:
         </p>
         <p className={`leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-          • <strong>Time-dependent killing ($fT &gt; MIC$):</strong> Golongan Beta-laktam (Meropenem, Piperacillin) sangat efektif jika kadar obat di atas MIC bakteri dipertahankan sepanjang waktu, sehingga teknik **Extended Infusion (3-4 jam)** sangat direkomendasikan pada CRRT.<br />
+          • <strong>Time-dependent killing ($fT &gt; MIC$):</strong> Golongan Beta-laktam (Meropenem, Piperacillin) sangat efektif jika kadar obat di atas MIC bakteri dipertahankan sepanjang waktu, sehingga teknik <strong>Extended Infusion (3-4 jam)</strong> sangat direkomendasikan pada CRRT.<br />
           • <strong>Membran High-Flux CRRT:</strong> Sebagian besar antibiotik molekul kecil bersifat lolos (*dialyzable*) melewati membran filter CRRT.
         </p>
       </div>
