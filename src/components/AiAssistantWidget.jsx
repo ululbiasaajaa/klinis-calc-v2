@@ -1,19 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { usePatientStore } from '../store/usePatientStore';
 
-export default function AiAssistantWidget({ currentInputs, activeTab, patientName, patientId }) {
+export default function AiAssistantWidget({ currentInputs, activeTab }) {
   const { theme } = useTheme();
   const { lang } = useLanguage();
   const isDark = theme === 'dark';
+
+  // MENAMBUNG KONEKSI LANGSUNG KE SINGLE SOURCE OF TRUTH (STORE V3)
+  const { patient, vitals, ventilator, medications, getClinicalContext } = usePatientStore();
+  const computedContext = getClinicalContext();
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
       sender: 'ai',
       text: lang === 'id' 
-        ? 'Halo, Dok/Farmasis! Saya Clinical AI Assistant (Smart Context Active). Saya dapat membaca data pasien dan parameter kalkulator yang sedang aktif di layar secara real-time. Ada yang bisa dibantu?' 
-        : 'Hello, Doctor/Pharmacist! I am your Smart Context Clinical AI Assistant, capable of reading live screen parameters.'
+        ? 'Halo, Dok/Farmasis! Saya Clinical AI Assistant (Enterprise v3 Engine). Saya terhubung langsung dengan Patient Store & Parameter Layar secara real-time. Ada yang bisa dibantu?' 
+        : 'Hello, Doctor/Pharmacist! I am your Enterprise v3 Clinical AI Assistant connected directly to live Patient Store data.'
     }
   ]);
   const [inputVal, setInputVal] = useState('');
@@ -40,7 +45,7 @@ export default function AiAssistantWidget({ currentInputs, activeTab, patientNam
 
       const lower = query.toLowerCase();
 
-      // RANGKUMAN SMART CONTEXT DARI LAYAR (LENGKAP SEMUA MODUL)
+      // MAPPING MODUL AKTIFF
       const activeModuleNames = {
         dashboard: 'Dashboard Analitik',
         pk: 'Farmakokinetik (Loading & Maintenance)',
@@ -72,45 +77,45 @@ export default function AiAssistantWidget({ currentInputs, activeTab, patientNam
 
       const moduleName = activeModuleNames[activeTab] || activeTab;
       const inputsString = JSON.stringify(currentInputs || {});
-      const hasInputs = currentInputs && Object.keys(currentInputs).length > 0 && Object.values(currentInputs).some(val => val !== '');
+      const patientName = patient.patientName || 'Tanpa Nama';
+      const patientId = patient.patientId || '-';
 
-      // Tombol Cepat / Analisis Konteks Layar
+      // 1. ANALISIS PARAMETER & STORE PASIEN V3
       if (lower.includes('analisis parameter data saat ini') || lower.includes('analisis') || lower.includes('hitung')) {
         reply = lang === 'id'
-          ? `📊 **Analisis Live Context Layar:**\n- **Pasien:** ${patientName || 'Tanpa Nama'} (RM: ${patientId || '-'})\n- **Modul Aktif:** ${moduleName}\n- **Data Parameter Input:** ${hasInputs ? inputsString : 'Belum ada data input yang dimasukkan ke form.'}\n\n*Saran AI:* Pastikan seluruh variabel parameter di atas telah diisi dengan akurat sesuai rekam medis / hasil laboratorium terbaru sebelum dijadikan acuan klinis.`
-          : `📊 **Live Screen Analysis:** Module: ${moduleName}, Inputs: ${inputsString}`;
-      } else if (lower.includes('safety alert') || lower.includes('peringatan') || lower.includes('efek samping')) {
-        reply = lang === 'id'
-          ? `⚠️ **Clinical Safety Alert untuk Modul [${moduleName}]:**\n- Selalu validasi ulang perhitungan dengan kondisi hemodinamik pasien secara langsung.\n- Perhatikan risiko interaksi obat, penyesuaian fungsi ginjal, dan rentang terapeutik sempit.\n- Data input aktif saat ini: ${inputsString}`
-          : `⚠️ Safety alert generated based on active module: ${moduleName}`;
-      } else if (lower.includes('soap') || lower.includes('ringkasan')) {
-        reply = lang === 'id'
-          ? `📋 **Draft SOAP Sembari Konteks Layar (${patientName || 'Pasien'}):**\n- **S (Subjective):** Evaluasi klinis & pemantauan terapi aktif.\n- **O (Objective):** Modul: ${moduleName} | Parameter Input: ${inputsString}.\n- **A (Assessment):** Parameter kalkulasi dalam pengawasan klinis.\n- **P (Plan):** Lanjutkan monitoring berkala & sesuaikan regimen dosis jika diindikasikan.`
-          : `📋 **SOAP Draft Generated** for patient ${patientName || 'Patient'}.`;
+          ? `📊 **Analisis Live Context Pasien (Enterprise v3):**\n- **Pasien:** ${patientName} (RM: ${patientId})\n- **Demografi:** ${patient.gender || '-'}, ${patient.age || '-'} thn | BB: ${patient.weightKg || '-'} kg, TB: ${patient.heightCm || '-'} cm\n- **Diagnosis:** ${patient.primaryDiagnosis || 'Belum diisi'}\n- **Fungsi Ginjal Auto:** eGFR ${computedContext.egfr || '-'} | ClCr ${computedContext.clcr || '-'} mL/min\n- **Modul Aktif:** ${moduleName}\n- **Input Form Layar:** ${inputsString}\n\n💡 *Rekomendasi AI:* Data pasien tersinkronisasi otomatis. Pastikan nilai lab terbaru (seperti SCr) telah diperbarui di Patient Context Bar atas.`
+          : `📊 **Live Patient Context Analysis:** Patient: ${patientName} (RM: ${patientId}), eGFR: ${computedContext.egfr}, Module: ${moduleName}.`;
       } 
-      // Deteksi Pertanyaan Umum Terkait Data Aktif
-      else if (lower.includes('aman') || lower.includes('sesuai') || lower.includes('gimana') || lower.includes('bagaimana') || lower.includes('ini')) {
+      // 2. CEK SAFETY ALERT
+      else if (lower.includes('safety alert') || lower.includes('peringatan') || lower.includes('efek samping')) {
+        const isRenalImpaired = computedContext.egfr > 0 && computedContext.egfr < 60;
         reply = lang === 'id'
-          ? `🤖 Berdasarkan layar aktif Anda di **${moduleName}** ${patientName ? `untuk pasien **${patientName}**` : ''} dengan parameter \`${inputsString}\`:\n\nPastikan perhitungan ini sudah diverifikasi dengan kondisi klinis riil (seperti fungsi ginjal, tanda vital, atau kadar elektrolit). Jika ada keraguan dosis, selalu konsultasikan dengan DPJP atau Apoteker penanggung jawab!`
-          : `🤖 Analyzing your active inputs on ${moduleName}: ${inputsString}. Please verify with clinical conditions.`;
+          ? `⚠️ **Clinical Safety Alert [${moduleName}]:**\n- **Status Pasien:** ${patientName} (RM: ${patientId})\n- **Evaluasi Ginjal:** ${isRenalImpaired ? `🚨 eGFR Rendah (${computedContext.egfr} mL/min) - Perlunya penyesuaian dosis obat renal!` : 'eGFR dalam batas normal/cukup.'}\n- **Obat Aktif Disimpan:** ${medications.length > 0 ? medications.map(m => m.name).join(', ') : 'Belum ada obat terdaftar'}\n- **Input Layar:** ${inputsString}`
+          : `⚠️ Safety alert generated for ${patientName} on module: ${moduleName}`;
+      } 
+      // 3. GENERATE DRAFT SOAP
+      else if (lower.includes('soap') || lower.includes('ringkasan')) {
+        reply = lang === 'id'
+          ? `📋 **Draft SOAP Clinical Suite v3 (${patientName} - RM: ${patientId}):**\n- **S (Subjective):** Pasien ${patient.gender || ''}, usia ${patient.age || '-'} tahun. Diagnosis: ${patient.primaryDiagnosis || '-'}.\n- **O (Objective):** BB: ${patient.weightKg || '-'} kg | SCr: ${patient.serumCreatinine || '-'} mg/dL | eGFR: ${computedContext.egfr || '-'} mL/min | ClCr: ${computedContext.clcr || '-'} mL/min.\n  • Evaluasi Modul ${moduleName}: ${inputsString}\n- **A (Assessment):** Monitoring terapi dan penyesuaian dosis berbasis fungsi organ.\n- **P (Plan):** Lanjutkan pemantauan berkala dan evaluasi ulang jika ada perubahan lab.`
+          : `📋 **SOAP Draft Generated** for patient ${patientName}.`;
+      } 
+      // 4. DETEKSI UMUM
+      else if (lower.includes('aman') || lower.includes('sesuai') || lower.includes('gimana') || lower.includes('bagaimana')) {
+        reply = lang === 'id'
+          ? `🤖 Berdasarkan data terpadu pasien **${patientName}** (eGFR: ${computedContext.egfr || '-'}, ClCr: ${computedContext.clcr || '-'} mL/min) pada modul **${moduleName}**:\n\nSistem mengonfirmasi parameter telah terhubung. Pastikan seluruh variabel tanda vital dan lab riil sudah sesuai dengan rekam medis!`
+          : `🤖 Analyzing inputs for ${patientName} on ${moduleName}. Please verify with clinical conditions.`;
       }
-      // Kasus Demam & Gangguan Ginjal
-      else if (lower.includes('demam') || lower.includes('panas')) {
-        reply = lang === 'id'
-          ? '🌡️ Untuk penanganan demam, pilihan utama antipiretik adalah **Parasetamol** (maks 4g/hari dewasa). **Hindari NSAID** (seperti Ibuprofen/Ketorolac) pada pasien dengan risiko gangguan fungsi ginjal.'
-          : '🌡️ Manage fever with Paracetamol. Avoid NSAIDs if renal impairment is present.';
-      } 
-      // Small talk / Casual response
+      // 5. SMALL TALK
       else if (lower.includes('hahaha') || lower.includes('wkwk') || lower.includes('oke') || lower.includes('siap') || lower.includes('terima kasih') || lower.includes('makasih')) {
         reply = lang === 'id'
-          ? 'Haha siap! Ada parameter atau kalkulator lain di Clinical Suite yang mau kita bedah bareng? Silakan ketik atau klik tombol analisis di atas ya! 😎'
-          : 'Haha alright! Let me know if you need any other clinical calculations or data analysis!';
+          ? 'Siap, Komandan! Seluruh data pasien sudah tersimpan di Shared Context v3. Ada yang mau dianalisis lagi? 😎'
+          : 'Alright! Let me know if you need any other clinical calculations or data analysis!';
       }
-      // Sapaan
+      // 6. SAPAAN
       else if (lower.includes('halo') || lower.includes('hai') || lower.includes('hi')) {
         reply = lang === 'id'
-          ? `Halo! Saya sedang memantau layar Anda di modul **${moduleName}**. Ada yang bisa saya bantu analisis dari data tersebut?`
-          : `Hello! I'm monitoring your screen on ${moduleName}. How can I help you analyze it?`;
+          ? `Halo! Saya memantau data pasien **${patientName}** di modul **${moduleName}**. Ada yang bisa saya bantu?`
+          : `Hello! Monitoring active data for ${patientName} on ${moduleName}. How can I help you?`;
       }
 
       setMessages((prev) => [...prev, { sender: 'ai', text: reply }]);
@@ -124,10 +129,10 @@ export default function AiAssistantWidget({ currentInputs, activeTab, patientNam
         <button
           onClick={() => setIsOpen(true)}
           className="bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-full shadow-2xl transition-all flex items-center justify-center gap-2 group hover:scale-105 cursor-pointer"
-          title="Clinical AI Assistant (Smart Context)"
+          title="Clinical AI Assistant (Enterprise v3)"
         >
           <span className="text-xl">🤖</span>
-          <span className="text-xs font-bold pr-1 hidden sm:inline">Clinical AI Assistant</span>
+          <span className="text-xs font-bold pr-1 hidden sm:inline">Clinical AI v3</span>
         </button>
       )}
 
@@ -143,7 +148,7 @@ export default function AiAssistantWidget({ currentInputs, activeTab, patientNam
               <span className="text-xl">🤖</span>
               <div>
                 <h3 className="font-bold text-xs">Clinical AI Assistant</h3>
-                <span className="text-[9px] opacity-80 block">🧠 Smart Context Active • Live Screen Sync</span>
+                <span className="text-[9px] opacity-80 block">🧠 Enterprise v3 • Shared Store Sync</span>
               </div>
             </div>
 
@@ -161,7 +166,7 @@ export default function AiAssistantWidget({ currentInputs, activeTab, patientNam
               onClick={() => handleSendMessage("Analisis parameter data saat ini")}
               className={`px-2 py-1 rounded-md border transition-all cursor-pointer ${isDark ? 'bg-slate-800 border-slate-700 text-blue-400 hover:bg-slate-700' : 'bg-white border-slate-300 text-blue-600 hover:bg-blue-50'}`}
             >
-              🔍 Analisis Layar Aktif
+              🔍 Analisis Pasien & Layar
             </button>
             <button 
               onClick={() => handleSendMessage("Cek safety alert")}
@@ -173,7 +178,7 @@ export default function AiAssistantWidget({ currentInputs, activeTab, patientNam
               onClick={() => handleSendMessage("Ringkasan SOAP")}
               className={`px-2 py-1 rounded-md border transition-all cursor-pointer ${isDark ? 'bg-slate-800 border-slate-700 text-emerald-400 hover:bg-slate-700' : 'bg-white border-slate-300 text-emerald-600 hover:bg-emerald-50'}`}
             >
-              📋 Ringkasan SOAP
+              📋 Draft SOAP v3
             </button>
           </div>
 
@@ -197,7 +202,7 @@ export default function AiAssistantWidget({ currentInputs, activeTab, patientNam
             {isLoading && (
               <div className="flex justify-start">
                 <div className={`p-3 rounded-2xl rounded-bl-none text-xs animate-pulse ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
-                  🧠 Membaca data layar & parameter aktif...
+                  🧠 Membaca Patient Store & parameter aktif...
                 </div>
               </div>
             )}
@@ -211,7 +216,7 @@ export default function AiAssistantWidget({ currentInputs, activeTab, patientNam
               type="text"
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
-              placeholder={lang === 'id' ? "Tanya soal data di layar..." : "Ask query about screen data..."}
+              placeholder={lang === 'id' ? "Tanya soal data pasien di layar..." : "Ask query about patient data..."}
               className={`flex-1 p-2.5 rounded-xl text-xs outline-none border ${
                 isDark ? 'bg-slate-900 border-slate-800 text-white focus:border-blue-500' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-600'
               }`}

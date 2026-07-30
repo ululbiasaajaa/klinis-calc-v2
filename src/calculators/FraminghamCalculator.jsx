@@ -6,8 +6,8 @@ export default function FraminghamCalculator() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  // Ambil data pasien global dari store atas
-  const { patient } = usePatientStore();
+  // AMBIL DATA PASIEN & DISPATCHERS LANGSUNG DARI STORE V3
+  const { patient, addLabRecord, addMedication } = usePatientStore();
 
   const [gender, setGender] = useState('male'); // 'male' atau 'female'
   const [age, setAge] = useState('50');
@@ -72,7 +72,6 @@ export default function FraminghamCalculator() {
       else if (s < 160) points += treatedBp === 'yes' ? 4 : 2;
       else points += treatedBp === 'yes' ? 5 : 3;
 
-      // Konversi poin kasar pria ke risiko 10 tahun (%)
       let riskPercent = '< 1%';
       let category = 'Risiko Rendah (< 10%)';
       let colorBadge = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30';
@@ -149,19 +148,42 @@ export default function FraminghamCalculator() {
     }
   })();
 
+  // Simpan Skor Risiko ke Outcome Tracker
+  const handleSaveToTracker = () => {
+    addLabRecord({
+      date: new Date().toLocaleDateString('id-ID'),
+      parameter: 'Framingham Risk Score (PJK 10 Thn)',
+      value: `${riskResult.riskPercent} (${riskResult.category})`,
+      unit: '%',
+      source: `TD: ${sbp} mmHg | Chol: ${totalChol} mg/dL`
+    });
+    alert(`✅ Hasil Framingham Risk (${riskResult.riskPercent}) berhasil disimpan ke Outcome Tracker Pasien!`);
+  };
+
+  // Tambahkan Rekomendasi Terapi Statin jika Risiko Sedang/Tinggi
+  const handleAddStatinMed = () => {
+    addMedication({
+      name: 'Atorvastatin 20mg / Simvastatin 20mg',
+      dose: '1x1 Tablet Malam Hari (Pencegahan Kardiovaskular)',
+      category: 'Dislipidemia / Prev. Kardiovaskular',
+      source: `Framingham Risk Score: ${riskResult.riskPercent}`
+    });
+    alert(`✅ Rekomendasi Terapi Statin berhasil ditambahkan ke regimen obat aktif pasien!`);
+  };
+
   return (
     <div className="space-y-6 text-xs">
       
       {patient.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Usia & jenis kelamin tersinkronisasi otomatis.</span>
-          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Synced</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
         </div>
       )}
 
       {/* HEADER */}
       <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-        <h3 className="font-bold text-blue-500 mb-2">❤️ Framingham Risk Score (Risiko PJK 10 Tahun)</h3>
+        <h3 className="font-bold text-blue-500 mb-2">❤️ Framingham Risk Score (Risiko PJK 10 Tahun v3)</h3>
         <p className="text-slate-400 text-[11px] mb-4">
           Menilai persentase risiko seseorang terkena Penyakit Jantung Koroner (PJK) dalam kurun waktu 10 tahun ke depan.
         </p>
@@ -172,7 +194,7 @@ export default function FraminghamCalculator() {
             <select
               value={gender}
               onChange={(e) => setGender(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             >
               <option value="male">Laki-laki</option>
               <option value="female">Perempuan</option>
@@ -186,7 +208,7 @@ export default function FraminghamCalculator() {
               value={age}
               onChange={(e) => setAge(e.target.value)}
               placeholder="e.g. 50"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             />
           </div>
 
@@ -195,7 +217,7 @@ export default function FraminghamCalculator() {
             <select
               value={smoke}
               onChange={(e) => setSmoke(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             >
               <option value="no">Tidak Merokok</option>
               <option value="yes">Ya (Perokok Aktif)</option>
@@ -207,7 +229,7 @@ export default function FraminghamCalculator() {
             <select
               value={diabetes}
               onChange={(e) => setDiabetes(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             >
               <option value="no">Tidak Ada</option>
               <option value="yes">Ya (Pasien Diabetes)</option>
@@ -221,7 +243,7 @@ export default function FraminghamCalculator() {
               value={totalChol}
               onChange={(e) => setTotalChol(e.target.value)}
               placeholder="e.g. 200"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             />
           </div>
 
@@ -232,7 +254,7 @@ export default function FraminghamCalculator() {
               value={hdl}
               onChange={(e) => setHdl(e.target.value)}
               placeholder="e.g. 50"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             />
           </div>
 
@@ -243,7 +265,7 @@ export default function FraminghamCalculator() {
               value={sbp}
               onChange={(e) => setSbp(e.target.value)}
               placeholder="e.g. 130"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             />
           </div>
 
@@ -252,7 +274,7 @@ export default function FraminghamCalculator() {
             <select
               value={treatedBp}
               onChange={(e) => setTreatedBp(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             >
               <option value="no">Tidak</option>
               <option value="yes">Ya</option>
@@ -275,6 +297,24 @@ export default function FraminghamCalculator() {
             {riskResult.category}
           </span>
         </div>
+      </div>
+
+      {/* AKSI SIMPAN DAN DISTRIBUSI KE STORE V3 */}
+      <div className="flex flex-wrap justify-end gap-2 pt-2">
+        <button
+          type="button"
+          onClick={handleSaveToTracker}
+          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+        >
+          📈 Simpan Risiko ke Outcome Tracker
+        </button>
+        <button
+          type="button"
+          onClick={handleAddStatinMed}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-2"
+        >
+          💊 Tambahkan Terapi Statin ke Regimen Pasien
+        </button>
       </div>
 
     </div>

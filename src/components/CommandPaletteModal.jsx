@@ -1,33 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { usePatientStore } from '../store/usePatientStore';
 
-// Daftar seluruh kalkulator klinis di aplikasi lu
+// Daftar seluruh kalkulator klinis (ID disinkronkan 1:1 dengan App.jsx & Sidebar)
 const CALCULATORS_LIST = [
-  { id: 'antibiotic', name: 'Penyesuaian Dosis Antibiotik (ClCr)', category: 'Farmasi & Infeksi', icon: '🦠' },
-  { id: 'ards', name: 'Kalkulator ARDS (PaO2/FiO2 Ratio)', category: 'Pulmonologi / ICU', icon: '🫁' },
-  { id: 'childpugh', name: 'Skor Sirosis Hepatis Child-Pugh & MELD', category: 'Gastrohepatologi', icon: '🟡' },
-  { id: 'crrt', name: 'Dosis & Parameter Terapi CRRT', category: 'ICU / Nefrologi', icon: '⚡' },
-  { id: 'ddi', name: 'Drug-Drug Interaction (Interaksi Obat)', category: 'Farmasi Klinis', icon: '⚠️' },
-  { id: 'diabetes', name: 'Kalkulator Diabetes & Koreksi Gula Darah',category: 'Endokrin', icon: '🩸' },
-  { id: 'electrolyte', name: 'Koreksi Elektrolit (Na, K, Ca, Mg)', category: 'Kritis / Elektrolit', icon: '🧪' },
-  { id: 'fluid', name: 'Cairan Rumatan (Holliday-Segar) & Parkland Luka Bakar', category: 'Bedah / IGD', icon: '💧' },
-  { id: 'framingham', name: 'Framingham Risk Score (Risiko PJK 10 Tahun)', category: 'Kardiovaskular', icon: '❤️' },
-  { id: 'gcs', name: 'Glasgow Coma Scale (GCS) & Kesadaran', category: 'Neurologi / IGD', icon: '🧠' },
-  { id: 'hemodialysis', name: 'Evaluasi & Dosis Hemodialisis', category: 'Nefrologi', icon: '🩺' },
-  { id: 'nti', name: 'NTI Drugs, TDM, Phenytoin, & Vancomycin AUC', category: 'Farmasi Klinis', icon: '📈' },
-  { id: 'pedsgeri', name: 'Dosis Khusus Pediatri & Geriatri', category: 'Farmasi Khusus', icon: '👶' },
-  { id: 'pregnancy', name: 'Usia Kehamilan & Hari Perkiraan Lahir (HPL)', category: 'Obstetri / KIA', icon: '🤰' },
-  { id: 'prescription', name: 'Cetak Etiket Resep Apotek (Putih/Biru)', category: 'Farmasi / Poliklinik', icon: '🏷️' },
-  { id: 'renaldosing', name: 'Auto-Checker Penyesuaian Dosis Ginjal', category: 'Nefrologi / Farmasi', icon: '💊' },
-  { id: 'steroid', name: 'Konversi Dosis Kortikosteroid Ekivalen', category: 'Farmakologi', icon: '🔄' },
-  { id: 'stoppstart', name: 'Skrining Geriatri STOPP / START v2', category: 'Geriatri', icon: '👴' },
-  { id: 'tdmchart', name: 'Kurva Time-Series TDM Kadar Obat', category: 'Farmasi Klinis', icon: '📊' },
-  { id: 'triage', name: 'Asisten Triase IGD (ATS)', category: 'Kegawatdaruratan', icon: '🚑' },
+  { id: 'dashboard', name: 'Dashboard Analitik', category: 'Utama', icon: '📊' },
+  { id: 'pk', name: 'Dosis PK (Farmakokinetik)', category: 'Dosis & Obat', icon: '💊' },
+  { id: 'drip', name: 'Dosis Drip / Syringe Pump', category: 'Dosis & Obat', icon: '💉' },
+  { id: 'abx_dose', name: 'Dosis Antibiotik (Adjusted ClCr)', category: 'Dosis & Obat', icon: '🦠' },
+  { id: 'peds_geri', name: 'Pediatrik & Geriatri', category: 'Dosis & Obat', icon: '👶' },
+  { id: 'stopp_start', name: 'Screening Geriatri (STOPP/START)', category: 'Dosis & Obat', icon: '📋' },
+  { id: 'crrt', name: 'Dosis ICU & CRRT', category: 'Dosis & Obat', icon: '🌡️' },
+  { id: 'framingham', name: 'Risiko Jantung (Framingham 10-Yr)', category: 'Organ & Fungsi', icon: '❤️' },
+  { id: 'gcs', name: 'Neurologi IGD (GCS & Kesadaran)', category: 'Fisiologi & Cairan', icon: '🧠' },
+  { id: 'triage', name: 'Triase IGD (Australasian Triage Scale)', category: 'Fisiologi & Cairan', icon: '🚑' },
+  { id: 'fluid', name: 'Terapi Cairan & Luka Bakar (Parkland)', category: 'Fisiologi & Cairan', icon: '💧' },
+  { id: 'electro', name: 'Koreksi Elektrolit Darurat (IGD)', category: 'Fisiologi & Cairan', icon: '🩸' },
+  { id: 'ards', name: 'Evaluasi ARDS & AGD (ICU)', category: 'Fisiologi & Cairan', icon: '🫁' },
+  { id: 'pregnancy', name: 'Usia Kehamilan & HPL (Obgin)', category: 'Organ & Fungsi', icon: '🤰' },
+  { id: 'renal_dose', name: 'Auto-Checker Dosis Ginjal', category: 'Organ & Fungsi', icon: '🧪' },
+  { id: 'label_print', name: 'Cetak Etiket & Resep Obat', category: 'Dosis & Obat', icon: '🖨️' },
+  { id: 'hd_dose', name: 'Dosis Pasien Cuci Darah (HD)', category: 'Organ & Fungsi', icon: '🧪' },
+  { id: 'hepar', name: 'Evaluasi Hepar (Child-Pugh & MELD)', category: 'Organ & Fungsi', icon: '🫀' },
+  { id: 'diabetes', name: 'Manajemen Diabetes & Insulin', category: 'Nutrisi & Energi', icon: '🩸' },
+  { id: 'steroid', name: 'Konversi Dosis Steroid', category: 'Dosis & Obat', icon: '🧬' },
+  { id: 'nti', name: 'Obat Terapi Sempit (NTI / TDM)', category: 'Dosis & Obat', icon: '⚡' },
+  { id: 'tdm_chart', name: 'Grafik Trend Monitoring TDM', category: 'Dosis & Obat', icon: '📊' },
+  { id: 'ddi', name: 'Cek Interaksi Obat (DDI High-Risk)', category: 'Dosis & Obat', icon: '⚠️' },
+  { id: 'renal', name: 'Fungsi Ginjal (ClCr & eGFR)', category: 'Organ & Fungsi', icon: '🫘' },
+  { id: 'anthro', name: 'Body (BSA, BMI, Parkland)', category: 'Fisiologi & Cairan', icon: '📐' },
+  { id: 'kalori', name: 'Kalori Harian & Diet Plan', category: 'Nutrisi & Energi', icon: '🔥' },
 ];
 
 export default function CommandPaletteModal({ isOpen, onClose, onSelectCalculator }) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  // Ambil profil pasien aktif dari Store v3
+  const { patient } = usePatientStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -129,10 +139,12 @@ export default function CommandPaletteModal({ isOpen, onClose, onSelectCalculato
           )}
         </div>
 
-        {/* FOOTER PANDUAN */}
-        <div className={`p-3 border-t flex justify-between items-center text-[10px] opacity-60 ${isDark ? 'border-slate-800 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`}>
-          <span>Gunakan <strong>↑↓</strong> untuk navigasi, <strong>Enter</strong> untuk memilih</span>
-          <span>Quick Search (Ctrl + K)</span>
+        {/* FOOTER PANDUAN & PASIEN AKTIF */}
+        <div className={`p-3 border-t flex justify-between items-center text-[10px] opacity-70 ${isDark ? 'border-slate-800 bg-slate-900/30 text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+          <span>
+            👤 Pasien: <strong>{patient.patientName || 'Umum'}</strong> ({patient.patientId || 'RM: -'})
+          </span>
+          <span>Gunakan <strong>↑↓</strong> lalu <strong>Enter</strong></span>
         </div>
       </div>
     </div>

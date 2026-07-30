@@ -6,8 +6,8 @@ export default function TriageCalculator() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  // Ambil data pasien global dari store atas
-  const { patient } = usePatientStore();
+  // AMBIL DATA PASIEN GLOBAL DAN DISPATCHERS V3
+  const { patient, addLabRecord, addMedication } = usePatientStore();
 
   // State untuk pilihan kategori triase berdasarkan asesmen klinis cepat
   const [selectedCategory, setSelectedCategory] = useState('cat1');
@@ -64,7 +64,7 @@ export default function TriageCalculator() {
       badgeColor: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30',
       targetTime: 'Maksimal 60 Menit',
       description: 'Kondisi kronis atau cedera ringan yang tidak mengancam nyawa dan hemodinamik stabil.',
-        examples: [
+      examples: [
         'Luka robek ringan (butuh jahit sederhana / hecting luar)',
         'Muntah atau diare tanpa tanda dehidrasi',
         'Infeksi saluran kemih (ISK) tanpa komplikasi demam tinggi',
@@ -90,13 +90,35 @@ export default function TriageCalculator() {
 
   const activeTriage = triageData[selectedCategory];
 
+  // HANDLER AKSI V3 DISPATCHERS
+  const handleSaveToTracker = () => {
+    addLabRecord({
+      date: new Date().toLocaleDateString('id-ID'),
+      parameter: 'Asesmen Triase IGD (ATS)',
+      value: `${activeTriage.level} (Target: ${activeTriage.targetTime})`,
+      unit: 'Kategori',
+      source: 'TriageCalculator v3'
+    });
+    alert(`✅ Hasil Triase (${activeTriage.level}) berhasil disimpan ke Outcome Tracker Pasien!`);
+  };
+
+  const handleAddTriageProtocol = () => {
+    addMedication({
+      name: `Protokol IGD: ${activeTriage.level}`,
+      dose: `${activeTriage.action} (Target Waktu: ${activeTriage.targetTime})`,
+      category: 'Gawat Darurat / Triase',
+      source: 'Triage Calculator v3'
+    });
+    alert(`✅ Protokol penanganan triase berhasil ditambahkan ke rekam medis aktif pasien!`);
+  };
+
   return (
     <div className="space-y-6 text-xs">
       
       {patient.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Asesmen triase & kegawatdaruratan IGD.</span>
-          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Active</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
         </div>
       )}
 
@@ -115,8 +137,9 @@ export default function TriageCalculator() {
             return (
               <button
                 key={key}
+                type="button"
                 onClick={() => setSelectedCategory(key)}
-                className={`p-2.5 rounded-xl font-bold text-center transition-all border text-[11px] flex flex-col items-center justify-center gap-1 ${
+                className={`p-2.5 rounded-xl font-bold text-center transition-all border text-[11px] flex flex-col items-center justify-center gap-1 cursor-pointer ${
                   isSelected 
                     ? `${item.color} shadow-lg scale-105` 
                     : isDark 
@@ -169,6 +192,24 @@ export default function TriageCalculator() {
         }`}>
           {activeTriage.action}
         </div>
+      </div>
+
+      {/* AKSI SIMPAN DAN DISTRIBUSI KE STORE V3 */}
+      <div className="flex flex-wrap justify-end gap-2 pt-2">
+        <button
+          type="button"
+          onClick={handleSaveToTracker}
+          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+        >
+          📈 Simpan Triase ke Outcome Tracker
+        </button>
+        <button
+          type="button"
+          onClick={handleAddTriageProtocol}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-2"
+        >
+          ➕ Tambahkan Protokol Triase ke Regimen Aktif
+        </button>
       </div>
 
     </div>

@@ -41,14 +41,17 @@ import AntibioticDoseCalculator from './calculators/AntibioticDoseCalculator';
 
 import { useLanguage } from './context/LanguageContext';
 import { useTheme } from './context/ThemeContext';
-import { usePatient } from './context/PatientContext';
+import { usePatientStore } from './store/usePatientStore';
 
 export default function App() {
   const { t } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const { patientName, setPatientName, patientId, setPatientId } = usePatient();
+  // Menggunakan store pasien global yang baru
+  const { patient, setPatient } = usePatientStore();
+  const patientName = patient.patientName;
+  const patientId = patient.patientId;
 
   const [isAuthorized, setIsAuthorized] = useState(() => {
     return sessionStorage.getItem('clinical_suite_auth_role') ? true : false;
@@ -460,8 +463,11 @@ export default function App() {
         isOpen={isPatientDirOpen}
         onClose={() => setIsPatientDirOpen(false)}
         onSelectPatient={(name, rm) => {
-          setPatientName(name);
-          setPatientId(rm);
+          setPatient({
+            ...patient,
+            patientName: name,
+            patientId: rm
+          });
           triggerToast(`Pasien ${name} dipilih!`, 'success');
         }}
         currentPatientName={patientName}
@@ -485,43 +491,7 @@ export default function App() {
         }}
       />
 
-      {/* MOBILE HEADER */}
-      <div className={`md:hidden p-4 flex justify-between items-center sticky top-0 z-50 border-b ${
-        isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
-      }`}>
-        <div className="flex items-center gap-2">
-          <span className="text-xl">🩺</span>
-          <div>
-            <span className="font-bold text-base text-blue-500 block leading-tight">Clinical Suite</span>
-            <span className="text-[9px] text-slate-400">Role: {userRole || 'Professional'}</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {isInstallable && (
-            <button onClick={handleInstallClick} className="p-2 rounded-lg bg-blue-600 text-white text-xs font-bold" title="Install Aplikasi">
-              📥
-            </button>
-          )}
-          <button onClick={() => setIsCommandOpen(true)} className="p-2 rounded-lg bg-indigo-600 text-white text-xs font-bold" title="Cari Cepat (Ctrl+K)">
-            🔍
-          </button>
-          <button onClick={() => setIsScannerOpen(true)} className="p-2 rounded-lg bg-emerald-600 text-white text-xs font-bold" title="Scanner Obat">
-            📸
-          </button>
-          <button onClick={() => setIsVoiceModalOpen(true)} className="p-2 rounded-lg bg-teal-600 text-white text-xs font-bold" title="Asisten Suara Klinis">
-            🎙️
-          </button>
-          <button onClick={() => setIsPatientDirOpen(true)} className="p-2 rounded-lg bg-blue-600 text-white text-xs font-bold" title="Direktori Pasien">
-            📁
-          </button>
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-2 rounded-lg ${
-            isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
-          }`}>
-            {isSidebarOpen ? '✖' : '☰'}
-          </button>
-        </div>
-      </div>
-
+      {/* SIDEBAR NAVIGATION */}
       <Sidebar
         menuItems={menuItems}
         activeTab={activeTab}
@@ -534,6 +504,43 @@ export default function App() {
 
       <main className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full space-y-6">
         
+        {/* MOBILE HEADER DENGAN HAMBURGER & QUICK ACTIONS */}
+        <div className={`md:hidden p-3 rounded-2xl flex justify-between items-center border ${
+          isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🩺</span>
+            <div>
+              <span className="font-bold text-sm text-blue-500 block leading-tight">Clinical Suite</span>
+              <span className="text-[9px] text-slate-400">Role: {userRole || 'Professional'}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {isInstallable && (
+              <button onClick={handleInstallClick} className="p-2 rounded-xl bg-blue-600 text-white text-xs font-bold" title="Install Aplikasi">
+                📥
+              </button>
+            )}
+            <button onClick={() => setIsCommandOpen(true)} className="p-2 rounded-xl bg-indigo-600 text-white text-xs font-bold" title="Cari Cepat (Ctrl+K)">
+              🔍
+            </button>
+            <button onClick={() => setIsScannerOpen(true)} className="p-2 rounded-xl bg-emerald-600 text-white text-xs font-bold" title="Scanner Obat">
+              📸
+            </button>
+            <button onClick={() => setIsVoiceModalOpen(true)} className="p-2 rounded-xl bg-teal-600 text-white text-xs font-bold" title="Asisten Suara Klinis">
+              🎙️
+            </button>
+            <button onClick={() => setIsPatientDirOpen(true)} className="p-2 rounded-xl bg-blue-600 text-white text-xs font-bold" title="Direktori Pasien">
+              📁
+            </button>
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-2 rounded-xl font-bold ${
+              isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
+            }`}>
+              {isSidebarOpen ? '✖' : '☰'}
+            </button>
+          </div>
+        </div>
+
         {/* PATIENT CONTEXT BAR GLOBAL (Hanya 1 di paling atas) */}
         <PatientContextBar 
           onOpenDirectory={() => setIsPatientDirOpen(true)} 
@@ -544,7 +551,7 @@ export default function App() {
           setHospitalInfo={setHospitalInfo}
         />
 
-        {/* SHORTCUTS BAR & PWA INSTALL BUTTON */}
+        {/* SHORTCUTS BAR & PWA INSTALL BUTTON (DESKTOP) */}
         <div className="hidden md:flex items-center justify-end gap-2">
           {isInstallable && (
             <button

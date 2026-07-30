@@ -6,8 +6,8 @@ export default function DiabetesCalculator() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  // Ambil data pasien global dari store atas
-  const { patient } = usePatientStore();
+  // AMBIL DATA PASIEN & DISPATCHERS LANGSUNG DARI STORE V3
+  const { patient, addMedication, addLabRecord } = usePatientStore();
 
   // State untuk Konversi HbA1c ke eAG
   const [hba1c, setHba1c] = useState('7.0');
@@ -47,7 +47,6 @@ export default function DiabetesCalculator() {
 
     if (totalDose <= 0) return { isf: 0, correctionDose: 0 };
 
-    // Aturan 1500 untuk Insulin Regular, Aturan 1800 untuk Insulin Rapid-Acting
     const ruleConstant = insulinType === 'rapid' ? 1800 : 1500;
     const calculatedIsf = ruleConstant / totalDose;
 
@@ -62,7 +61,7 @@ export default function DiabetesCalculator() {
     };
   })();
 
-  // 3. Kalkulasi Insulin-to-Carb Ratio (ICR) -> 500 Rule untuk Rapid / 450 Rule untuk Regular
+  // 3. Kalkulasi Insulin-to-Carb Ratio (ICR)
   const { icr, prandialDose } = (() => {
     const totalDose = parseFloat(tdd) || 40;
     const carbs = parseFloat(carbsGrams) || 0;
@@ -81,13 +80,36 @@ export default function DiabetesCalculator() {
 
   const totalMealDose = Number((correctionDose + prandialDose).toFixed(1));
 
+  // Aksi simpan ke Regimen Obat Pasien Store v3
+  const handleAddToMedications = () => {
+    addMedication({
+      name: `Insulin ${insulinType === 'rapid' ? 'Rapid-Acting (Aspart/Lispro)' : 'Regular (Actrapid)'}`,
+      dose: `${totalMealDose} Unit (Koreksi: ${correctionDose}U + Prandial: ${prandialDose}U)`,
+      category: 'Antidiabetes / Insulin',
+      source: `Diabetes Calculator (GD: ${currentBg} mg/dL)`
+    });
+    alert(`✅ Regimen Insulin (${totalMealDose} Unit) berhasil ditambahkan ke daftar obat aktif pasien!`);
+  };
+
+  // Simpan nilai Gula Darah & eAG ke Outcome Tracker
+  const handleSaveGlucToRecord = () => {
+    addLabRecord({
+      date: new Date().toLocaleDateString('id-ID'),
+      parameter: 'Gula Darah & eAG',
+      value: `${currentBg} mg/dL (eAG: ${eagVal})`,
+      unit: 'mg/dL',
+      source: `HbA1c ${hba1c}%`
+    });
+    alert(`✅ Data Glukosa (${currentBg} mg/dL) & eAG (${eagVal} mg/dL) berhasil disimpan ke Outcome Tracker Pasien!`);
+  };
+
   return (
     <div className="space-y-6 text-xs">
       
       {patient.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Estimasi TDD dihitung otomatis dari berat badan pasien.</span>
-          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Synced</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
         </div>
       )}
 
@@ -107,7 +129,7 @@ export default function DiabetesCalculator() {
               value={hba1c}
               onChange={(e) => setHba1c(e.target.value)}
               placeholder="e.g. 7.5"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             />
           </div>
 
@@ -118,12 +140,11 @@ export default function DiabetesCalculator() {
         </div>
       </div>
 
-
       {/* BAGIAN 2: INSULIN SENSITIVITY & CORRECTION FACTOR */}
       <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
         <h3 className="font-bold text-emerald-500 mb-2">💉 2. Kalkulator Koreksi Gula Darah & Sensitivitas Insulin (ISF)</h3>
         <p className="text-slate-400 text-[11px] mb-4">
-          Menghitung berapa banyak penurunan gula darah oleh 1 unit insulin (ISF) serta dosis koreksi hiperglikemia.
+          Menhitung berapa banyak penurunan gula darah oleh 1 unit insulin (ISF) serta dosis koreksi hiperglikemia.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -132,10 +153,10 @@ export default function DiabetesCalculator() {
             <select
               value={insulinType}
               onChange={(e) => setInsulinType(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             >
               <option value="rapid">Rapid-Acting (Aspart/Lispro/Glulisine - Rule 1800)</option>
-              <option value="regular">Regular / Short-Acting (Aktrapid - Rule 1500)</option>
+              <option value="regular">Regular / Short-Acting (Actrapid - Rule 1500)</option>
             </select>
           </div>
 
@@ -146,7 +167,7 @@ export default function DiabetesCalculator() {
               value={tdd}
               onChange={(e) => setTdd(e.target.value)}
               placeholder="e.g. 40"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             />
           </div>
 
@@ -157,7 +178,7 @@ export default function DiabetesCalculator() {
               value={currentBg}
               onChange={(e) => setCurrentBg(e.target.value)}
               placeholder="e.g. 250"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             />
           </div>
 
@@ -168,7 +189,7 @@ export default function DiabetesCalculator() {
               value={targetBg}
               onChange={(e) => setTargetBg(e.target.value)}
               placeholder="e.g. 150"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             />
           </div>
 
@@ -183,7 +204,6 @@ export default function DiabetesCalculator() {
           </div>
         </div>
       </div>
-
 
       {/* BAGIAN 3: INSULIN-TO-CARB RATIO (ICR) */}
       <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
@@ -200,7 +220,7 @@ export default function DiabetesCalculator() {
               value={carbsGrams}
               onChange={(e) => setCarbsGrams(e.target.value)}
               placeholder="e.g. 60"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             />
           </div>
 
@@ -220,6 +240,24 @@ export default function DiabetesCalculator() {
           <span className="text-xs font-bold text-blue-600 dark:text-blue-400 block mb-1">TOTAL REKOMENDASI DOSIS INSULIN SEKALI SUNTIK (Koreksi + Makan)</span>
           <span className="text-3xl font-black text-blue-700 dark:text-white">{totalMealDose} Unit</span>
         </div>
+      </div>
+
+      {/* AKSI SIMPAN DAN DISTRIBUSI KE STORE V3 */}
+      <div className="flex flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          onClick={handleSaveGlucToRecord}
+          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all text-xs cursor-pointer flex items-center gap-2"
+        >
+          📈 Simpan Glukosa & eAG ke Outcome Tracker
+        </button>
+        <button
+          type="button"
+          onClick={handleAddToMedications}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg transition-all text-xs cursor-pointer flex items-center gap-2"
+        >
+          ➕ Tambahkan Dosis Insulin ke Regimen Pasien
+        </button>
       </div>
 
     </div>

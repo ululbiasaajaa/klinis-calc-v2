@@ -1,51 +1,57 @@
-import React, { useState, useEffect } from 'react';
-import { usePatient } from '../context/PatientContext';
+import React, { useState } from 'react';
+import { usePatientStore } from '../store/usePatientStore';
 
 export default function ClinicalOutcomeTracker() {
-  const { patientId, patientName } = usePatient();
+  // MEMANGGIL STORE V3 SEBAGAI SINGLE SOURCE OF TRUTH
+  const { patient, labsHistory, addLabRecord, setPatientData } = usePatientStore();
+  const patientName = patient.patientName || 'Umum';
+  const patientId = patient.patientId || '-';
+
   const [isOpen, setIsOpen] = useState(false);
-  const [labInput, setLabInput] = useState({ date: '29/06/2026', parameter: 'Serum Kreatinin', value: '', unit: 'mg/dL' });
-
-  const storageKey = `clinical_suite_outcomes_${patientId || 'general'}`;
-
-  const [logs, setLogs] = useState(() => {
-    const saved = localStorage.getItem(storageKey);
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: 101, date: '26/06/2026', parameter: 'Serum Kreatinin', value: '2.4', unit: 'mg/dL' },
-      { id: 102, date: '27/06/2026', parameter: 'Serum Kreatinin', value: '1.9', unit: 'mg/dL' },
-      { id: 103, date: '28/06/2026', parameter: 'Serum Kreatinin', value: '1.4', unit: 'mg/dL' },
-      { id: 104, date: '29/06/2026', parameter: 'Serum Kreatinin', value: '1.1', unit: 'mg/dL' }
-    ];
+  const [labInput, setLabInput] = useState({
+    date: new Date().toLocaleDateString('id-ID'),
+    parameter: 'Serum Kreatinin',
+    value: '',
+    unit: 'mg/dL'
   });
-
-  useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(logs));
-  }, [logs, storageKey]);
 
   const handleAddLog = (e) => {
     e.preventDefault();
     if (!labInput.value || !labInput.date) return;
-    const newLog = { id: Date.now(), ...labInput };
-    setLogs([...logs, newLog]); // Urutkan kronologis untuk grafik
-    setLabInput({ date: '29/06/2026', parameter: 'Serum Kreatinin', value: '', unit: 'mg/dL' });
+
+    // 1. Tambah ke labsHistory terpusat v3
+    addLabRecord({
+      date: labInput.date,
+      parameter: labInput.parameter,
+      value: labInput.value,
+      unit: labInput.unit,
+      scr: labInput.parameter === 'Serum Kreatinin' ? labInput.value : patient.serumCreatinine
+    });
+
+    // 2. Jika input berupa Serum Kreatinin, update data pasien utama agar eGFR/ClCr atas ikut terhitung ulang
+    if (labInput.parameter === 'Serum Kreatinin') {
+      setPatientData({ serumCreatinine: labInput.value });
+    }
+
+    setLabInput({
+      date: new Date().toLocaleDateString('id-ID'),
+      parameter: 'Serum Kreatinin',
+      value: '',
+      unit: 'mg/dL'
+    });
   };
 
-  const handleDelete = (id) => {
-    setLogs(logs.filter(item => item.id !== id));
-  };
-
-  // Helper bikin koordinat SVG sederhana dari data nilai
-  const values = logs.map(l => parseFloat(l.value) || 0);
-  const maxVal = Math.max(...values, 5);
-  const minVal = Math.min(...values, 0);
+  // Helper bikin koordinat SVG sederhana dari data nilai labsHistory
+  const values = labsHistory.map(l => parseFloat(l.value) || 0);
+  const maxVal = values.length > 0 ? Math.max(...values, 5) : 5;
+  const minVal = values.length > 0 ? Math.min(...values, 0) : 0;
   const range = maxVal - minVal || 1;
   
   const svgWidth = 500;
   const svgHeight = 120;
   
-  const points = logs.map((l, index) => {
-    const x = (index / (Math.max(logs.length - 1, 1))) * (svgWidth - 40) + 20;
+  const points = labsHistory.map((l, index) => {
+    const x = (index / (Math.max(labsHistory.length - 1, 1))) * (svgWidth - 40) + 20;
     const y = svgHeight - 20 - ((parseFloat(l.value) - minVal) / range) * (svgHeight - 40);
     return { x, y, ...l };
   });
@@ -58,23 +64,25 @@ export default function ClinicalOutcomeTracker() {
         <div className="flex items-center gap-2">
           <span className="text-xl">📈</span>
           <div>
-            <h3 className="font-bold text-sm text-white">Clinical Outcome Tracker & Trend Visual</h3>
-            <p className="text-[10px] text-slate-400">Pasien: {patientName || 'Umum'} (RM: {patientId || '-'})</p>
+            <h3 className="font-bold text-sm text-white">Clinical Outcome Tracker & Lab Trend (v3)</h3>
+            <p className="text-[10px] text-slate-400">Pasien: {patientName} (RM: {patientId})</p>
           </div>
         </div>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+          className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
         >
           {isOpen ? 'Tutup Panel' : '+ Catat Lab Baru'}
         </button>
       </div>
 
       {/* RENDER GRAFIK GARIS SVG INTERAKTIF */}
-      {logs.length > 0 && (
+      {labsHistory.length > 0 && (
         <div className="mb-6 p-4 rounded-xl bg-slate-950 border border-slate-800">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-[11px] font-bold text-blue-400">📊 Visualisasi Tren Riwayat Lab ({logs[0]?.parameter || 'Lab'})</span>
+            <span className="text-[11px] font-bold text-blue-400">
+              📊 Visualisasi Tren Riwayat Lab ({labsHistory[0]?.parameter || 'Lab'})
+            </span>
             <span className="text-[10px] text-slate-400">Min: {minVal} | Max: {maxVal}</span>
           </div>
           <div className="w-full overflow-x-auto">
@@ -131,6 +139,8 @@ export default function ClinicalOutcomeTracker() {
               <option value="eGFR">eGFR (mL/min)</option>
               <option value="GDS">Gula Darah Sewaktu (mg/dL)</option>
               <option value="Hemoglobin">Hemoglobin (g/dL)</option>
+              <option value="WBC">Sel Darah Putih / WBC (10^3/uL)</option>
+              <option value="CRP">C-Reactive Protein / CRP (mg/L)</option>
             </select>
           </div>
           <div>
@@ -142,7 +152,7 @@ export default function ClinicalOutcomeTracker() {
             <input type="text" value={labInput.unit} onChange={(e) => setLabInput({...labInput, unit: e.target.value})} className="w-full p-2 rounded-lg bg-slate-900 border border-slate-700 text-white outline-none" />
           </div>
           <div className="flex items-end">
-            <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold p-2 rounded-lg transition-all">Simpan</button>
+            <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold p-2 rounded-lg transition-all cursor-pointer">Simpan & Sync Context</button>
           </div>
         </form>
       )}
@@ -155,20 +165,20 @@ export default function ClinicalOutcomeTracker() {
               <th className="p-2.5">Tanggal</th>
               <th className="p-2.5">Parameter Lab</th>
               <th className="p-2.5">Nilai Terukur</th>
-              <th className="p-2.5 text-right">Aksi</th>
+              <th className="p-2.5 text-right">Status Store</th>
             </tr>
           </thead>
           <tbody>
-            {logs.length === 0 ? (
-              <tr><td colSpan="4" className="p-4 text-center text-slate-500 italic">Belum ada data trend lab tercatat untuk pasien ini.</td></tr>
+            {labsHistory.length === 0 ? (
+              <tr><td colSpan="4" className="p-4 text-center text-slate-500 italic">Belum ada data trend lab tercatat untuk pasien ini di Store v3.</td></tr>
             ) : (
-              logs.map((item) => (
+              labsHistory.map((item) => (
                 <tr key={item.id} className="border-b border-slate-800/60 hover:bg-slate-950/40">
-                  <td className="p-2.5 text-slate-300">{item.date}</td>
-                  <td className="p-2.5 font-bold text-blue-400">{item.parameter}</td>
-                  <td className="p-2.5 font-extrabold text-emerald-400">{item.value} <span className="text-[10px] text-slate-400 font-normal">{item.unit}</span></td>
-                  <td className="p-2.5 text-right">
-                    <button onClick={() => handleDelete(item.id)} className="text-red-400 hover:text-red-300 font-bold px-2 py-1 rounded bg-red-950/30 border border-red-900/50">Hapus</button>
+                  <td className="p-2.5 text-slate-300">{item.date || new Date(item.timestamp).toLocaleDateString('id-ID')}</td>
+                  <td className="p-2.5 font-bold text-blue-400">{item.parameter || 'Serum Kreatinin'}</td>
+                  <td className="p-2.5 font-extrabold text-emerald-400">{item.value || item.scr} <span className="text-[10px] text-slate-400 font-normal">{item.unit || 'mg/dL'}</span></td>
+                  <td className="p-2.5 text-right font-mono text-[10px] text-emerald-500 font-bold">
+                    ✓ SYNCED
                   </td>
                 </tr>
               ))

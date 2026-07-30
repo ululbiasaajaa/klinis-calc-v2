@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { usePatientStore } from '../store/usePatientStore';
 
@@ -6,8 +6,8 @@ export default function ChildPughCalculator() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  // Ambil data pasien global dari store atas
-  const { patient } = usePatientStore();
+  // AMBIL DATA PASIEN GLOBAL DAN DISPATCH STORE V3
+  const { patient, addLabRecord } = usePatientStore();
 
   // State untuk Child-Pugh Score
   const [encephalopathy, setEncephalopathy] = useState('1'); 
@@ -20,12 +20,19 @@ export default function ChildPughCalculator() {
   const [meldBili, setMeldBili] = useState('1.5');
   const [meldInr, setMeldInr] = useState('1.2');
   const [meldCr, setMeldCr] = useState('1.0');
-  const [isDialysis, setIsDialysis] = useState('no'); // Dalam 7 hari terakhir cuci darah 2x atau CVVH
+  const [isDialysis, setIsDialysis] = useState('no');
+
+  // Auto-sync serum creatinine dari Patient Store v3 jika ada
+  useEffect(() => {
+    if (patient.serumCreatinine) {
+      setMeldCr(patient.serumCreatinine.toString());
+    }
+  }, [patient.serumCreatinine]);
 
   // 1. Kalkulasi Child-Pugh
   const totalCPScore = parseInt(encephalopathy) + parseInt(ascites) + parseInt(bilirubinCP) + parseInt(albumin) + parseInt(inrCP);
 
-  let cClass = 'A';
+  let cClass = 'A (Mild Impairment)';
   let survival1Year = '100%';
   let surgicalRisk = 'Low Risk (Perioperatif aman)';
   let colorBadge = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30';
@@ -33,7 +40,7 @@ export default function ChildPughCalculator() {
   if (totalCPScore >= 7 && totalCPScore <= 9) {
     cClass = 'B (Moderate Impairment)';
     survival1Year = '80%';
-    surgicalRisk = 'Moderate Risk (Perlu evaluasi ketat)';
+    surgicalRisk = 'Moderate Risk (Perlu evaluasi dosis & ketat)';
     colorBadge = 'text-amber-500 bg-amber-500/10 border-amber-500/30';
   } else if (totalCPScore >= 10) {
     cClass = 'C (Severe Impairment)';
@@ -78,13 +85,25 @@ export default function ChildPughCalculator() {
   else if (meldScore >= 30 && meldScore <= 39) meldMortality = '71.3% (Risiko Sangat Tinggi)';
   else if (meldScore >= 40) meldMortality = '> 70% - 100% (Gawat Darurat / Prioritas Transplantasi)';
 
+  // Simpan hasil ke Outcome Tracker v3
+  const handleSaveToRecord = () => {
+    addLabRecord({
+      date: new Date().toLocaleDateString('id-ID'),
+      parameter: 'Child-Pugh & MELD',
+      value: `CP: ${totalCPScore} (${cClass.split(' ')[0]}) | MELD: ${meldScore}`,
+      unit: 'Points',
+      source: `Evaluasi Hepar (Mortalitas 3B: ${meldMortality})`
+    });
+    alert(`✅ Skor Child-Pugh (${totalCPScore}) & MELD (${meldScore}) berhasil disimpan ke Outcome Tracker Pasien!`);
+  };
+
   return (
     <div className="space-y-6 text-xs">
       
       {patient.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
-          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Evaluasi fungsi hepar & sirosis.</span>
-          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Active</span>
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Evaluasi fungsi hepar, sirosis & MELD score.</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
         </div>
       )}
 
@@ -101,7 +120,7 @@ export default function ChildPughCalculator() {
             <select
               value={encephalopathy}
               onChange={(e) => setEncephalopathy(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             >
               <option value="1">Tidak Ada (Normal) - 1 Poin</option>
               <option value="2">Grade 1-2 (Letargi ringan) - 2 Poin</option>
@@ -114,7 +133,7 @@ export default function ChildPughCalculator() {
             <select
               value={ascites}
               onChange={(e) => setAscites(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             >
               <option value="1">Tidak Ada (None) - 1 Poin</option>
               <option value="2">Mild / Terkontrol Medikamentosa - 2 Poin</option>
@@ -127,7 +146,7 @@ export default function ChildPughCalculator() {
             <select
               value={bilirubinCP}
               onChange={(e) => setBilirubinCP(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             >
               <option value="1">&lt; 2.0 mg/dL - 1 Poin</option>
               <option value="2">2.0 - 3.0 mg/dL - 2 Poin</option>
@@ -140,7 +159,7 @@ export default function ChildPughCalculator() {
             <select
               value={albumin}
               onChange={(e) => setAlbumin(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             >
               <option value="1">&gt; 3.5 g/dL - 1 Poin</option>
               <option value="2">2.8 - 3.5 g/dL - 2 Poin</option>
@@ -153,7 +172,7 @@ export default function ChildPughCalculator() {
             <select
               value={inrCP}
               onChange={(e) => setInrCP(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             >
               <option value="1">INR &lt; 1.7 - 1 Poin</option>
               <option value="2">INR 1.7 - 2.3 - 2 Poin</option>
@@ -229,7 +248,7 @@ export default function ChildPughCalculator() {
             <select
               value={isDialysis}
               onChange={(e) => setIsDialysis(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             >
               <option value="no">Tidak (Normal)</option>
               <option value="yes">Ya (Kreatinin otomatis diset 4.0 sesuai protokol MELD)</option>
@@ -250,6 +269,17 @@ export default function ChildPughCalculator() {
             <strong className="text-amber-600 dark:text-amber-400 text-sm">{meldMortality}</strong>
           </div>
         </div>
+      </div>
+
+      {/* SIMPAN KEDUA SKOR KE STORE OUTCOME TRACKER V3 */}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={handleSaveToRecord}
+          className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg transition-all text-xs cursor-pointer flex items-center gap-2"
+        >
+          💾 Simpan Skor Child-Pugh & MELD ke Outcome Tracker
+        </button>
       </div>
 
     </div>

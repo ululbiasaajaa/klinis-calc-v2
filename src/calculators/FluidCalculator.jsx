@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { usePatientStore } from '../store/usePatientStore';
 
-export default function FluidCalculator() {
+export default function FluidParklandCalculator() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  // Ambil data pasien global dari store atas
-  const { patient } = usePatientStore();
+  // AMBIL DATA PASIEN GLOBAL DARI STORE V3
+  const { patient, addMedication, addLabRecord } = usePatientStore();
 
   // State untuk Holliday-Segar (Rumatan Cairan)
   const [weightFluid, setWeightFluid] = useState('65');
@@ -58,13 +58,49 @@ export default function FluidCalculator() {
     };
   })();
 
+  // Aksi simpan ke Regimen Obat Pasien Store v3
+  const handleAddMaintenanceMed = () => {
+    addMedication({
+      name: 'Infus Cairan Rumatan (NaCl 0.9% / D5%)',
+      dose: `${hourlyRateFluid} mL/jam (${maintenanceFluid} mL/24 jam)`,
+      category: 'Cairan Rumatan (Holliday-Segar)',
+      source: `BB Pasien: ${weightFluid} kg`
+    });
+    alert(`✅ Cairan Rumatan (${hourlyRateFluid} mL/jam) berhasil ditambahkan ke daftar obat/cairan aktif pasien!`);
+  };
+
+  const handleAddParklandMed = () => {
+    addMedication({
+      name: 'Infus Resusitasi Ringer Laktat (RL)',
+      dose: `8 Jam Pertama: ${first8Hours} mL/jam | 16 Jam Berikutnya: ${next16Hours} mL/jam (Total: ${totalParkland} mL)`,
+      category: 'Resusitasi Luka Bakar (Parkland)',
+      source: `TBSA: ${tbsa}% | BB: ${weightBurn} kg`
+    });
+    alert(`✅ Instruksi Resusitasi Parkland RL (${totalParkland} mL) berhasil ditambahkan ke daftar obat/cairan aktif pasien!`);
+  };
+
+  // Simpan ke Outcome Tracker
+  const handleSaveToTracker = (type) => {
+    const param = type === 'maintenance' ? 'Rumatan Cairan (Holliday-Segar)' : 'Resusitasi Parkland (Luka Bakar)';
+    const val = type === 'maintenance' ? `${maintenanceFluid} mL/24h (${hourlyRateFluid} mL/h)` : `Total: ${totalParkland} mL (TBSA ${tbsa}%)`;
+    
+    addLabRecord({
+      date: new Date().toLocaleDateString('id-ID'),
+      parameter: param,
+      value: val,
+      unit: 'mL',
+      source: 'Kalkulator Cairan v3'
+    });
+    alert(`✅ Data ${param} berhasil disimpan ke Outcome Tracker Pasien!`);
+  };
+
   return (
     <div className="space-y-6 text-xs">
       
       {patient.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Berat badan tersinkronisasi otomatis.</span>
-          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Synced</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
         </div>
       )}
 
@@ -83,7 +119,7 @@ export default function FluidCalculator() {
               value={weightFluid}
               onChange={(e) => setWeightFluid(e.target.value)}
               placeholder="e.g. 65"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             />
           </div>
 
@@ -93,10 +129,27 @@ export default function FluidCalculator() {
               <span className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{maintenanceFluid} <span className="text-xs font-normal text-slate-400">mL</span></span>
             </div>
             <div className="border-l border-blue-500/20 pl-4">
-              <span className="text-[10px] text-blue-500 font-bold block mb-1">KECEPATAN TETESAN</span>
+              <span className="text-[10px] text-blue-500 font-bold block mb-1">KECEPATAN INFUS</span>
               <span className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{hourlyRateFluid} <span className="text-xs font-normal text-slate-400">mL/jam</span></span>
             </div>
           </div>
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2 pt-3">
+          <button
+            type="button"
+            onClick={() => handleSaveToTracker('maintenance')}
+            className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2 px-3 rounded-xl transition-all cursor-pointer"
+          >
+            📈 Simpan ke Outcome Tracker
+          </button>
+          <button
+            type="button"
+            onClick={handleAddMaintenanceMed}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-xl shadow-lg transition-all cursor-pointer"
+          >
+            ➕ Tambahkan Cairan Rumatan ke Regimen
+          </button>
         </div>
       </div>
 
@@ -116,7 +169,7 @@ export default function FluidCalculator() {
               value={weightBurn}
               onChange={(e) => setWeightBurn(e.target.value)}
               placeholder="e.g. 60"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             />
           </div>
 
@@ -127,7 +180,7 @@ export default function FluidCalculator() {
               value={tbsa}
               onChange={(e) => setTbsa(e.target.value)}
               placeholder="e.g. 25"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             />
           </div>
         </div>
@@ -148,6 +201,23 @@ export default function FluidCalculator() {
               <span className="text-base font-bold text-slate-200">{next16Hours} mL/jam</span>
             </div>
           </div>
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2 pt-3">
+          <button
+            type="button"
+            onClick={() => handleSaveToTracker('parkland')}
+            className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2 px-3 rounded-xl transition-all cursor-pointer"
+          >
+            📈 Simpan ke Outcome Tracker
+          </button>
+          <button
+            type="button"
+            onClick={handleAddParklandMed}
+            className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-3 rounded-xl shadow-lg transition-all cursor-pointer"
+          >
+            ➕ Tambahkan Resusitasi RL ke Regimen
+          </button>
         </div>
       </div>
 

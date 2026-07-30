@@ -43,11 +43,12 @@ const GERI_BEERS_LIST = [
 
 export default function PedsGeriCalculator() {
   const { lang } = useLanguage();
-  const { patient } = usePatientStore();
+  const { patient, addMedication, addLabRecord } = usePatientStore();
   const [subTab, setSubTab] = useState('peds'); // 'peds' or 'geri'
 
   // PEDIATRIC STATE
   const [pedsInput, setPedsInput] = useState({
+    drugName: 'Paracetamol',
     weight: '',
     dosePerKg: '',
     frequency: '3', // x sehari
@@ -113,20 +114,70 @@ export default function PedsGeriCalculator() {
     }
   };
 
+  // HANDLER AKSI V3 DISPATCHERS
+
+  const handleAddPedsMedication = () => {
+    if (pedsCalc.isExceed) {
+      alert('⚠️ PERINGATAN OVERDOSE: Dosis total harian anak melebihi batas maksimal dewasa! Harap sesuaikan dosis sebelum menambahkan ke regimen.');
+      return;
+    }
+
+    addMedication({
+      name: `${pedsInput.drugName || 'Obat Pediatrik'} (${pedsCalc.singleDose} mg / kali)`,
+      dose: `${pedsInput.frequency}x sehari @ ${pedsCalc.singleDose} mg (Total: ${pedsCalc.dailyDose} mg/hari)`,
+      category: 'Dosis Pediatrik Anak',
+      source: `BB Anak: ${pedsInput.weight} kg (${pedsInput.dosePerKg} mg/kg)`
+    });
+    alert(`✅ Regimen Dosis Anak (${pedsInput.drugName || 'Obat'} ${pedsCalc.singleDose} mg) berhasil ditambahkan ke rekam medis pasien!`);
+  };
+
+  const handleSavePedsRecord = () => {
+    addLabRecord({
+      date: new Date().toLocaleDateString('id-ID'),
+      parameter: `Dosis Pediatrik ${pedsInput.drugName || 'Anak'}`,
+      value: `${pedsCalc.singleDose} mg x ${pedsInput.frequency}/hari (Total: ${pedsCalc.dailyDose} mg/hari)`,
+      unit: 'mg',
+      source: `BB: ${pedsInput.weight} kg | BSA: ${pedsCalc.bsaPeds || '-'} m²`
+    });
+    alert(`✅ Rekam Dosis Pediatrik berhasil disimpan ke Outcome Tracker Pasien!`);
+  };
+
+  const handleSaveGeriRecord = () => {
+    if (selectedGeriDrugs.length === 0) {
+      alert('Pilih setidaknya satu obat geriatri untuk disimpan.');
+      return;
+    }
+
+    const drugNames = selectedGeriDrugs
+      .map((id) => GERI_BEERS_LIST.find((d) => d.id === id)?.name)
+      .filter(Boolean)
+      .join(', ');
+
+    addLabRecord({
+      date: new Date().toLocaleDateString('id-ID'),
+      parameter: 'Skrining Geriatri Beers Criteria 2023',
+      value: `Obat Berisiko Terdeteksi: ${drugNames}`,
+      unit: 'Beers Criteria',
+      source: 'Evaluasi Keamanan Obat Geriatri v3'
+    });
+    alert(`✅ Skrining Keamanan Geriatri berhasil disimpan ke Outcome Tracker Pasien!`);
+  };
+
   return (
-    <div>
+    <div className="text-xs space-y-4">
       {patient.patientName && (
-        <div className="p-3 mb-4 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between text-xs">
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Berat & Tinggi badan tersinkronisasi otomatis.</span>
-          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Synced</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
         </div>
       )}
 
       {/* SUB-TAB NAVIGATOR */}
-      <div className="flex border-b border-slate-800 mb-6 gap-2">
+      <div className="flex border-b border-slate-800 mb-4 gap-2">
         <button
+          type="button"
           onClick={() => setSubTab('peds')}
-          className={`pb-2.5 px-4 text-xs font-bold transition-all border-b-2 ${
+          className={`pb-2.5 px-4 text-xs font-bold transition-all border-b-2 cursor-pointer ${
             subTab === 'peds'
               ? 'border-blue-500 text-blue-400'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -135,8 +186,9 @@ export default function PedsGeriCalculator() {
           👶 {lang === 'id' ? 'Kalkulator Dosis Pediatrik (Anak)' : 'Pediatric Dosing Calculator'}
         </button>
         <button
+          type="button"
           onClick={() => setSubTab('geri')}
-          className={`pb-2.5 px-4 text-xs font-bold transition-all border-b-2 ${
+          className={`pb-2.5 px-4 text-xs font-bold transition-all border-b-2 cursor-pointer ${
             subTab === 'geri'
               ? 'border-blue-500 text-blue-400'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -151,7 +203,21 @@ export default function PedsGeriCalculator() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">
+              <label className="block text-slate-300 mb-1 font-semibold">
+                Nama Obat Anak
+              </label>
+              <input
+                type="text"
+                name="drugName"
+                value={pedsInput.drugName}
+                onChange={handlePedsChange}
+                placeholder="e.g. Paracetamol / Amoxicillin"
+                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 font-semibold"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 mb-1 font-semibold">
                 {lang === 'id' ? 'Berat Badan Anak (kg)' : 'Child Weight (kg)'}
               </label>
               <input
@@ -160,12 +226,12 @@ export default function PedsGeriCalculator() {
                 value={pedsInput.weight}
                 onChange={handlePedsChange}
                 placeholder="e.g. 12"
-                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs"
+                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 font-semibold"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-300 mb-1">
+              <label className="block text-slate-300 mb-1 font-semibold">
                 {lang === 'id' ? 'Dosis Target (mg/kg/hari)' : 'Target Dose (mg/kg/day)'}
               </label>
               <input
@@ -174,19 +240,19 @@ export default function PedsGeriCalculator() {
                 value={pedsInput.dosePerKg}
                 onChange={handlePedsChange}
                 placeholder="e.g. 15 (Paracetamol 10-15 mg/kg)"
-                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs"
+                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 font-semibold"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-300 mb-1">
+              <label className="block text-slate-300 mb-1 font-semibold">
                 {lang === 'id' ? 'Frekuensi Pemberian' : 'Administration Frequency'}
               </label>
               <select
                 name="frequency"
                 value={pedsInput.frequency}
                 onChange={handlePedsChange}
-                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs"
+                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 font-bold cursor-pointer"
               >
                 <option value="1">1x Sehari (q24h)</option>
                 <option value="2">2x Sehari (q12h)</option>
@@ -196,7 +262,7 @@ export default function PedsGeriCalculator() {
             </div>
 
             <div>
-              <label className="block text-xs text-slate-300 mb-1">
+              <label className="block text-slate-300 mb-1 font-semibold">
                 {lang === 'id' ? 'Dosis Maks Dewasa Harian (mg) [Opsional]' : 'Max Adult Daily Dose (mg) [Optional]'}
               </label>
               <input
@@ -205,12 +271,12 @@ export default function PedsGeriCalculator() {
                 value={pedsInput.maxAdultDose}
                 onChange={handlePedsChange}
                 placeholder="e.g. 4000 (Max Paracetamol)"
-                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs"
+                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 font-semibold"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-300 mb-1">
+              <label className="block text-slate-300 mb-1 font-semibold">
                 {lang === 'id' ? 'Tinggi Badan Anak (cm) [Opsional BSA]' : 'Child Height (cm) [Optional BSA]'}
               </label>
               <input
@@ -219,7 +285,7 @@ export default function PedsGeriCalculator() {
                 value={pedsInput.height}
                 onChange={handlePedsChange}
                 placeholder="e.g. 85"
-                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs"
+                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 font-semibold"
               />
             </div>
           </div>
@@ -268,13 +334,30 @@ export default function PedsGeriCalculator() {
               • {lang === 'id' ? 'Gunakan spuit/pipet ukur berskala presisi (bukan sendok makan/teh dapur) untuk meminimalisir kesalahan penakaran obat cair.' : 'Always use calibrated oral syringes or dosing cups for liquid medication.'}
             </p>
           </div>
+
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={handleSavePedsRecord}
+              className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+            >
+              📈 Simpan Dosis ke Outcome Tracker
+            </button>
+            <button
+              type="button"
+              onClick={handleAddPedsMedication}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-2"
+            >
+              ➕ Tambahkan Dosis Anak ke Regimen Pasien
+            </button>
+          </div>
         </div>
       )}
 
       {/* SUB-TAB 2: GERIATRI */}
       {subTab === 'geri' && (
         <div className="space-y-4">
-          <h4 className="text-xs font-bold text-slate-300 mb-2">
+          <h4 className="font-bold text-slate-300 mb-2">
             👵 {lang === 'id' ? 'Screening Potensi Obat Berbahaya Pada Lansia (Beers Criteria 2023):' : 'Screening Potentially Inappropriate Medications in Elderly (Beers Criteria):'}
           </h4>
 
@@ -309,6 +392,16 @@ export default function PedsGeriCalculator() {
                 </div>
               );
             })}
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={handleSaveGeriRecord}
+              className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-2"
+            >
+              📈 Simpan Hasil Skrining Beers ke Outcome Tracker
+            </button>
           </div>
         </div>
       )}

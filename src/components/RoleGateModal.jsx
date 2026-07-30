@@ -7,7 +7,7 @@ export default function RoleGateModal({ onAccessGranted }) {
   const { lang } = useLanguage();
   const isDark = theme === 'dark';
 
-  const [selectedRole, setSelectedRole] = useState('Farmasis Klinis');
+  const [selectedRole, setSelectedRole] = useState('Farmasis');
   const [agreed, setAgreed] = useState(false);
 
   const roles = [
@@ -20,9 +20,11 @@ export default function RoleGateModal({ onAccessGranted }) {
 
   const handleEnter = () => {
     if (!agreed) return;
-    // Simpan status sesi ke sessionStorage biar ga muncul terus tiap pindah menu, tapi muncul lagi kalau browser ditutup
+    // Simpan status sesi ke sessionStorage agar audit trail v3 dapat membacanya
     sessionStorage.setItem('clinical_suite_auth_role', selectedRole);
-    onAccessGranted(selectedRole);
+    if (onAccessGranted) {
+      onAccessGranted(selectedRole);
+    }
   };
 
   return (
@@ -37,12 +39,12 @@ export default function RoleGateModal({ onAccessGranted }) {
             🩺
           </div>
           <h2 className="text-xl font-extrabold tracking-tight">
-            Clinical Suite Professional v2.5
+            Clinical Suite Enterprise v3
           </h2>
           <p className="text-xs text-slate-400">
             {lang === 'id' 
-              ? 'Sistem Pendukung Keputusan Klinis & Kalkulator Farmasi Terpadu' 
-              : 'Clinical Decision Support & Integrated Pharmacy Calculator System'}
+              ? 'Sistem Pendukung Keputusan Klinis & Single Source Patient Context' 
+              : 'Clinical Decision Support & Integrated Shared Patient Context'}
           </p>
         </div>
 
@@ -57,8 +59,9 @@ export default function RoleGateModal({ onAccessGranted }) {
               return (
                 <button
                   key={r.id}
+                  type="button"
                   onClick={() => setSelectedRole(r.id)}
-                  className={`w-full p-3 rounded-xl text-left text-xs font-semibold transition-all flex items-center justify-between border ${
+                  className={`w-full p-3 rounded-xl text-left text-xs font-semibold transition-all flex items-center justify-between border cursor-pointer ${
                     isSelected
                       ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-900/30'
                       : isDark
@@ -70,7 +73,7 @@ export default function RoleGateModal({ onAccessGranted }) {
                     <span className="text-base">{r.icon}</span>
                     <span>{r.label}</span>
                   </div>
-                  {isSelected && <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded">Active</span>}
+                  {isSelected && <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-bold">Active</span>}
                 </button>
               );
             })}
@@ -109,6 +112,7 @@ export default function RoleGateModal({ onAccessGranted }) {
 
         {/* SUBMIT BUTTON */}
         <button
+          type="button"
           onClick={handleEnter}
           disabled={!agreed}
           className={`w-full py-3.5 px-4 rounded-2xl font-bold text-xs transition-all shadow-lg ${
@@ -117,7 +121,7 @@ export default function RoleGateModal({ onAccessGranted }) {
               : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50'
           }`}
         >
-          {lang === 'id' ? '🚀 Masuk ke Sesi Klinis' : '🚀 Enter Clinical Session'}
+          {lang === 'id' ? '🚀 Masuk ke Sesi Klinis Enterprise v3' : '🚀 Enter Clinical Session v3'}
         </button>
 
       </div>

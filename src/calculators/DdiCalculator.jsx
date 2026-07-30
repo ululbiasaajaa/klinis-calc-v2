@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useTheme } from '../context/ThemeContext';
+import { usePatientStore } from '../store/usePatientStore';
 
 // DATABASE INTERAKSI OBAT HIGH-RISK / HIGH-IMPACT
 const DRUG_LIST = [
@@ -80,7 +82,34 @@ const INTERACTION_DATABASE = [
 ];
 
 export default function DdiCalculator() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
+  // AMBIL DATABASES OBAT PASIEN DARI STORE V3
+  const { patient, medications } = usePatientStore();
+
   const [selectedDrugs, setSelectedDrugs] = useState([]);
+
+  // AUTO-MATCH OBAT DARI PATIENT STORE KE CHECKLIST SCREENING
+  useEffect(() => {
+    if (medications.length > 0) {
+      const autoMatchedIds = [];
+      medications.forEach((med) => {
+        const medNameLower = med.name.toLowerCase();
+        DRUG_LIST.forEach((d) => {
+          const dNameLower = d.name.toLowerCase();
+          // Cek substring matching
+          if (dNameLower.split('/')[0].trim() && medNameLower.includes(d.id)) {
+            if (!autoMatchedIds.includes(d.id)) autoMatchedIds.push(d.id);
+          }
+        });
+      });
+
+      if (autoMatchedIds.length > 0) {
+        setSelectedDrugs((prev) => Array.from(new Set([...prev, ...autoMatchedIds])));
+      }
+    }
+  }, [medications]);
 
   // Toggle Pilihan Obat
   const handleToggleDrug = (drugId) => {
@@ -110,27 +139,39 @@ export default function DdiCalculator() {
   const detectedList = detectInteractions();
 
   return (
-    <div>
-      <div className="mb-6">
-        <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-          <span>💊</span> Pilih Kombinasi Obat Pasien (Centang Minimal 2 Obat):
-        </h3>
-        <p className="text-slate-400 text-xs mb-4">
-          Pilih resep obat aktif pasien untuk melakukan screening potensi interaksi obat berbahaya (*High-Risk Drug Interactions*).
-        </p>
+    <div className="space-y-6 text-xs">
+      
+      {patient.patientName && (
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Evaluasi interaksi obat (DDI Engine v3).</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
+        </div>
+      )}
 
-        {/* DRUG SELECTOR GRID */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 bg-slate-950 p-4 rounded-2xl border border-slate-800 max-h-60 overflow-y-auto">
+      {/* HEADER SECTION */}
+      <div className="mb-4">
+        <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
+          <span>💊</span> Pilih Kombinasi Obat Pasien (DDI High-Risk Screening v3):
+        </h3>
+        <p className="text-slate-400 text-xs">
+          Pilih resep obat aktif pasien atau gunakan pencocokan otomatis dari rekam medis untuk memindai potensi interaksi berisiko tinggi.
+        </p>
+      </div>
+
+      {/* DRUG SELECTOR GRID */}
+      <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-60 overflow-y-auto pr-1">
           {DRUG_LIST.map((drug) => {
             const isSelected = selectedDrugs.includes(drug.id);
             return (
               <button
                 key={drug.id}
+                type="button"
                 onClick={() => handleToggleDrug(drug.id)}
-                className={`p-2.5 rounded-xl border text-left text-xs font-semibold transition-all flex justify-between items-center ${
+                className={`p-2.5 rounded-xl border text-left text-xs font-semibold transition-all flex justify-between items-center cursor-pointer ${
                   isSelected
                     ? 'bg-blue-600/30 border-blue-500 text-white shadow-md'
-                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                    : isDark ? 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200' : 'bg-white border-slate-300 text-slate-700'
                 }`}
               >
                 <span>{drug.name}</span>
@@ -149,8 +190,9 @@ export default function DdiCalculator() {
           </span>
           {selectedDrugs.length > 0 && (
             <button
+              type="button"
               onClick={() => setSelectedDrugs([])}
-              className="text-slate-500 hover:text-red-400 underline font-medium"
+              className="text-slate-500 hover:text-red-400 underline font-medium cursor-pointer"
             >
               Kosongkan Pilihan
             </button>
@@ -165,7 +207,9 @@ export default function DdiCalculator() {
         </h4>
 
         {selectedDrugs.length < 2 && (
-          <div className="bg-slate-950/60 border border-slate-800 p-6 rounded-2xl text-center text-xs text-slate-500">
+          <div className={`p-6 rounded-2xl border text-center text-xs text-slate-500 ${
+            isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+          }`}>
             Pilih minimal <strong>2 obat</strong> dari daftar di atas untuk memulai kalkulasi screening interaksi.
           </div>
         )}

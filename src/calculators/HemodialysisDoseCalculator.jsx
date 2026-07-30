@@ -8,8 +8,8 @@ export default function HemodialysisDoseCalculator() {
   const { lang } = useLanguage();
   const isDark = theme === 'dark';
 
-  // Ambil data pasien global dari store atas
-  const { patient } = usePatientStore();
+  // AMBIL DATA PASIEN GLOBAL DAN DISPATCH STORE V3
+  const { patient, addLabRecord, addMedication } = usePatientStore();
 
   // Database Sampel Obat Umum di HD
   const hdDrugDatabase = [
@@ -60,26 +60,54 @@ export default function HemodialysisDoseCalculator() {
 
   const evalResult = calcSupplement();
 
+  // Simpan Hasil Evaluasi ke Outcome Tracker Pasien
+  const handleSaveToTracker = () => {
+    addLabRecord({
+      date: new Date().toLocaleDateString('id-ID'),
+      parameter: 'Penyesuaian Dosis Hemodialisis (HD)',
+      value: `Obat: ${drugInfo.name} | Suplemen Post-HD: +${evalResult.suppDoseMg} mg (Terbuang ~${evalResult.percentLost}%)`,
+      unit: 'mg',
+      source: `Filter: ${customInputs.filterType === 'high_flux' ? 'High-Flux' : 'Low-Flux'} | Durasi HD: ${customInputs.hdDurationHours} Jam`
+    });
+    alert(`✅ Data Penyesuaian Dosis HD (${drugInfo.name}) berhasil disimpan ke Outcome Tracker Pasien!`);
+  };
+
+  // Tambahkan Dosis Suplemen Post-HD ke Regimen Obat Pasien
+  const handleAddToMedications = () => {
+    if (drugInfo.id === 'metformin') {
+      alert('⚠️ Metformin berkontraindikasi pada pasien HD! Dosis suplemen tidak dapat ditambahkan.');
+      return;
+    }
+
+    addMedication({
+      name: `${drugInfo.name} (Suplemen Post-HD)`,
+      dose: `+${evalResult.suppDoseMg} mg SEGERA SETELAH HEMODIALISIS (Post-HD)`,
+      category: 'Penyesuaian Dosis Hemodialisis',
+      source: `Dosis Awal: ${customInputs.preHdDoseMg} mg | Durasi HD: ${customInputs.hdDurationHours} jam`
+    });
+    alert(`✅ Dosis Suplemen Post-HD (${drugInfo.name} +${evalResult.suppDoseMg} mg) berhasil ditambahkan ke regimen obat aktif pasien!`);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-xs">
       
       {patient.patientName && (
-        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between text-xs">
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Evaluasi penyesuaian dosis obat Hemodialisis.</span>
-          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Active</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* PILIH OBAT DARI DATABASE */}
         <div>
-          <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Pilih Obat Pasien HD:' : 'Select Medication:'}
           </label>
           <select
             value={selectedDrug}
             onChange={(e) => setSelectedDrug(e.target.value)}
-            className={`w-full p-3 rounded-xl border outline-none text-xs font-bold ${
+            className={`w-full p-3 rounded-xl border outline-none text-xs font-bold cursor-pointer ${
               isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
             }`}
           >
@@ -93,14 +121,14 @@ export default function HemodialysisDoseCalculator() {
 
         {/* TIPE DIALYZER / FILTER HD */}
         <div>
-          <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Tipe Membran Dialiser (Filter HD):' : 'Dialyzer Membrane Type:'}
           </label>
           <select
             name="filterType"
             value={customInputs.filterType}
             onChange={handleInputChange}
-            className={`w-full p-3 rounded-xl border outline-none text-xs font-bold ${
+            className={`w-full p-3 rounded-xl border outline-none text-xs font-bold cursor-pointer ${
               isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
             }`}
           >
@@ -111,7 +139,7 @@ export default function HemodialysisDoseCalculator() {
 
         {/* DOSIS NORMAL SEBELUM HD */}
         <div>
-          <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Dosis Rutin Seharusnya (mg):' : 'Standard Dose (mg):'}
           </label>
           <input
@@ -120,7 +148,7 @@ export default function HemodialysisDoseCalculator() {
             value={customInputs.preHdDoseMg}
             onChange={handleInputChange}
             placeholder="e.g. 1000"
-            className={`w-full p-3 rounded-xl border outline-none text-xs ${
+            className={`w-full p-3 rounded-xl border outline-none text-xs font-semibold ${
               isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
             }`}
           />
@@ -128,7 +156,7 @@ export default function HemodialysisDoseCalculator() {
 
         {/* DURASI PROSES CUCI DARAH */}
         <div>
-          <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Durasi HD (Jam):' : 'HD Session Duration (Hours):'}
           </label>
           <input
@@ -137,7 +165,7 @@ export default function HemodialysisDoseCalculator() {
             value={customInputs.hdDurationHours}
             onChange={handleInputChange}
             placeholder="e.g. 4"
-            className={`w-full p-3 rounded-xl border outline-none text-xs ${
+            className={`w-full p-3 rounded-xl border outline-none text-xs font-semibold ${
               isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
             }`}
           />
@@ -182,6 +210,25 @@ export default function HemodialysisDoseCalculator() {
           • <strong>Faktor Dialyzability:</strong> Obat yang mudah terbuang lewat HD umumnya berukuran molekul kecil (&lt;500 Da), *Protein Binding* rendah (&lt;80%), dan *Volume Distribution* kecil (&lt;1 L/kg).
         </p>
       </div>
+
+      {/* AKSI SIMPAN DAN DISTRIBUSI KE STORE V3 */}
+      <div className="flex flex-wrap justify-end gap-2 pt-2">
+        <button
+          type="button"
+          onClick={handleSaveToTracker}
+          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+        >
+          📈 Simpan Dosis HD ke Outcome Tracker
+        </button>
+        <button
+          type="button"
+          onClick={handleAddToMedications}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-2"
+        >
+          💊 Tambahkan Dosis Suplemen Post-HD ke Regimen Pasien
+        </button>
+      </div>
+
     </div>
   );
 }

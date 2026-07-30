@@ -8,8 +8,8 @@ export default function PrescriptionEtiquetteCalculator() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  // Ambil data pasien global dari store atas
-  const { patient } = usePatientStore();
+  // AMBIL DATA PASIEN GLOBAL DAN DISPATCHERS V3
+  const { patient, addMedication, addLabRecord } = usePatientStore();
 
   // State Formulir Etiket / Resep
   const [medInfo, setMedInfo] = useState({
@@ -92,27 +92,49 @@ export default function PrescriptionEtiquetteCalculator() {
     win.document.close();
   };
 
+  // HANDLER AKSI V3 DISPATCHERS
+  const handleAddToMedications = () => {
+    addMedication({
+      name: medInfo.drugName,
+      dose: `${medInfo.signa} (${medInfo.qty})`,
+      category: medInfo.type === 'white' ? 'Obat Dalam / Oral' : 'Obat Luar / Topikal',
+      source: `Etiket Apotek • BUD: ${medInfo.expDate}`
+    });
+    alert(`✅ Obat (${medInfo.drugName}) berhasil ditambahkan ke regimen obat aktif pasien!`);
+  };
+
+  const handleSaveToTracker = () => {
+    addLabRecord({
+      date: new Date().toLocaleDateString('id-ID'),
+      parameter: 'Dispensing Etiket Apotek',
+      value: `${medInfo.drugName} - ${medInfo.signa} (Qty: ${medInfo.qty})`,
+      unit: 'Label',
+      source: `Tipe: ${medInfo.type === 'white' ? 'Obat Dalam' : 'Obat Luar'} | BUD: ${medInfo.expDate}`
+    });
+    alert(`✅ Rekam Dispensing Etiket berhasil disimpan ke Outcome Tracker Pasien!`);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-xs">
       
       {patient.patientName && (
-        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between text-xs">
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Nama pasien otomatis masuk ke etiket resep.</span>
-          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Synced</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* INPUT TIPE ETIKET */}
         <div>
-          <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Tipe Etiket (Jalur Obat)' : 'Label Type (Route)'}
           </label>
           <select
             name="type"
             value={medInfo.type}
             onChange={handleChange}
-            className={`w-full p-3 rounded-xl border outline-none text-xs font-bold ${
+            className={`w-full p-3 rounded-xl border outline-none text-xs font-bold cursor-pointer ${
               isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
             }`}
           >
@@ -123,7 +145,7 @@ export default function PrescriptionEtiquetteCalculator() {
 
         {/* NAMA PASIEN DI ETIKET */}
         <div>
-          <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Nama Pasien pada Etiket' : 'Patient Name on Label'}
           </label>
           <input
@@ -132,7 +154,7 @@ export default function PrescriptionEtiquetteCalculator() {
             value={medInfo.patientNameOverride}
             onChange={handleChange}
             placeholder="e.g. Ny. Siti Aminah"
-            className={`w-full p-3 rounded-xl border outline-none text-xs ${
+            className={`w-full p-3 rounded-xl border outline-none text-xs font-semibold ${
               isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
             }`}
           />
@@ -140,7 +162,7 @@ export default function PrescriptionEtiquetteCalculator() {
 
         {/* NAMA OBAT */}
         <div>
-          <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Nama Obat & Sediaan' : 'Medication Name & Form'}
           </label>
           <input
@@ -149,7 +171,7 @@ export default function PrescriptionEtiquetteCalculator() {
             value={medInfo.drugName}
             onChange={handleChange}
             placeholder="e.g. Amoxicillin 500mg Cap"
-            className={`w-full p-3 rounded-xl border outline-none text-xs ${
+            className={`w-full p-3 rounded-xl border outline-none text-xs font-semibold ${
               isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
             }`}
           />
@@ -157,7 +179,7 @@ export default function PrescriptionEtiquetteCalculator() {
 
         {/* ATURAN PAKAI (SIGNA) */}
         <div>
-          <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Aturan Pakai / Signa' : 'Directions / Signa'}
           </label>
           <input
@@ -166,7 +188,7 @@ export default function PrescriptionEtiquetteCalculator() {
             value={medInfo.signa}
             onChange={handleChange}
             placeholder="e.g. 3 x sehari 1 kapsul sesudah makan"
-            className={`w-full p-3 rounded-xl border outline-none text-xs ${
+            className={`w-full p-3 rounded-xl border outline-none text-xs font-semibold ${
               isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
             }`}
           />
@@ -174,7 +196,7 @@ export default function PrescriptionEtiquetteCalculator() {
 
         {/* JUMLAH / QTY */}
         <div>
-          <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Jumlah Obat (Qty)' : 'Quantity (Qty)'}
           </label>
           <input
@@ -183,7 +205,7 @@ export default function PrescriptionEtiquetteCalculator() {
             value={medInfo.qty}
             onChange={handleChange}
             placeholder="e.g. 10 Tablet / 1 Botol"
-            className={`w-full p-3 rounded-xl border outline-none text-xs ${
+            className={`w-full p-3 rounded-xl border outline-none text-xs font-semibold ${
               isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
             }`}
           />
@@ -191,7 +213,7 @@ export default function PrescriptionEtiquetteCalculator() {
 
         {/* EXP / BEYOND USE DATE */}
         <div>
-          <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Batas Kadaluarsa (BUD / Expired)' : 'Beyond Use Date (BUD)'}
           </label>
           <input
@@ -199,7 +221,7 @@ export default function PrescriptionEtiquetteCalculator() {
             name="expDate"
             value={medInfo.expDate}
             onChange={handleChange}
-            className={`w-full p-3 rounded-xl border outline-none text-xs ${
+            className={`w-full p-3 rounded-xl border outline-none text-xs font-semibold cursor-pointer ${
               isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
             }`}
           />
@@ -207,7 +229,7 @@ export default function PrescriptionEtiquetteCalculator() {
 
         {/* CATATAN KHUSUS */}
         <div className="md:col-span-2">
-          <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Peringatan Khusus / Instruksi' : 'Special Instruction'}
           </label>
           <input
@@ -216,7 +238,7 @@ export default function PrescriptionEtiquetteCalculator() {
             value={medInfo.notes}
             onChange={handleChange}
             placeholder="e.g. Harus dihabiskan / Simpan di kulkas"
-            className={`w-full p-3 rounded-xl border outline-none text-xs ${
+            className={`w-full p-3 rounded-xl border outline-none text-xs font-semibold ${
               isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
             }`}
           />
@@ -295,11 +317,26 @@ export default function PrescriptionEtiquetteCalculator() {
         </div>
       </div>
 
-      {/* TOMBOL CETAK ETIKET */}
-      <div className="flex justify-end">
+      {/* TOMBOL AKSI & CETAK ETIKET */}
+      <div className="flex flex-wrap justify-end gap-2 pt-2">
         <button
+          type="button"
+          onClick={handleSaveToTracker}
+          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+        >
+          📈 Simpan Dispensing ke Tracker
+        </button>
+        <button
+          type="button"
+          onClick={handleAddToMedications}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-2"
+        >
+          ➕ Tambahkan Obat ke Regimen Pasien
+        </button>
+        <button
+          type="button"
           onClick={handlePrintLabel}
-          className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded-xl text-xs transition-all shadow-lg flex items-center gap-2"
+          className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded-xl transition-all shadow-lg cursor-pointer flex items-center gap-2"
         >
           🖨️ Cetak Etiket Obat Spooler (Thermal / Stiker)
         </button>

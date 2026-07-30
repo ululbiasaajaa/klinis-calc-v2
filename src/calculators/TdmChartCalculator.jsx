@@ -36,8 +36,8 @@ export default function TdmChartCalculator() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  // Ambil data pasien global dari store atas
-  const { patient } = usePatientStore();
+  // AMBIL DATA PASIEN GLOBAL DAN DISPATCHERS V3
+  const { patient, addLabRecord, addMedication } = usePatientStore();
 
   const [selectedDrug, setSelectedDrug] = useState('vancomycin');
   const [dataPoints, setDataPoints] = useState([
@@ -138,24 +138,53 @@ export default function TdmChartCalculator() {
     }
   }
 
+  // HANDLER AKSI V3 DISPATCHERS
+  const handleSaveToTracker = () => {
+    addLabRecord({
+      date: new Date().toLocaleDateString('id-ID'),
+      parameter: `TDM Kurva ${target.name}`,
+      value: `Kadar Terakhir: ${latestVal} ${target.unit} (${statusBadge.text})`,
+      unit: target.unit,
+      source: 'TDM Chart Calculator v3'
+    });
+    alert(`✅ Data Kurva TDM berhasil disimpan ke Outcome Tracker Pasien!`);
+  };
+
+  const handleAddTdmMedication = () => {
+    let recDoseStr = 'Pertahankan dosis saat ini (Rentang Terapeutik)';
+    if (latestVal < target.min) {
+      recDoseStr = 'Naikkan dosis harian / perpendek interval (Sub-terapeutik)';
+    } else if (latestVal > target.max) {
+      recDoseStr = 'Hentikan sementara / turunkan dosis (Toksik/Overdose)';
+    }
+
+    addMedication({
+      name: `Penyesuaian ${target.name}`,
+      dose: `${recDoseStr} (Kadar Terakhir: ${latestVal} ${target.unit})`,
+      category: 'Therapeutic Drug Monitoring (TDM)',
+      source: `Target: ${target.min} - ${target.max} ${target.unit}`
+    });
+    alert(`✅ Rekomendasi TDM berhasil ditambahkan ke regimen obat aktif pasien!`);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-xs">
       
       {patient.patientName && (
-        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between text-xs">
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Pemantauan TDM (Therapeutic Drug Monitoring).</span>
-          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Active</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
         </div>
       )}
 
       {/* SELEKSI OBAT NTI */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs text-slate-300 mb-1 font-bold">Pilih Obat NTI Terapi:</label>
+          <label className="block text-slate-300 mb-1 font-bold">Pilih Obat NTI Terapi:</label>
           <select
             value={selectedDrug}
             onChange={(e) => setSelectedDrug(e.target.value)}
-            className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs font-semibold"
+            className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs font-semibold cursor-pointer"
           >
             {Object.keys(DRUG_TARGETS).map((key) => (
               <option key={key} value={key}>
@@ -183,15 +212,15 @@ export default function TdmChartCalculator() {
       </div>
 
       {/* INPUT DATA POINT BARU */}
-      <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl">
-        <h4 className="text-xs font-bold text-slate-300 mb-3">➕ Tambah Hasil Sampling Kadar Obat Baru:</h4>
+      <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl space-y-4">
+        <h4 className="text-xs font-bold text-slate-300">➕ Tambah Hasil Sampling Kadar Obat Baru:</h4>
         <form onSubmit={handleAddPoint} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <input
             type="text"
             placeholder="Waktu/Hari (e.g. Hari 4 - 08:00)"
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
-            className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-white text-xs outline-none focus:border-blue-500"
+            className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-white text-xs outline-none focus:border-blue-500 font-semibold"
           />
           <input
             type="number"
@@ -199,18 +228,18 @@ export default function TdmChartCalculator() {
             placeholder={`Kadar (${target.unit})`}
             value={newValue}
             onChange={(e) => setNewValue(e.target.value)}
-            className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-white text-xs outline-none focus:border-blue-500"
+            className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-white text-xs outline-none focus:border-blue-500 font-semibold"
           />
           <button
             type="submit"
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl text-xs transition-all"
+            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl text-xs transition-all cursor-pointer"
           >
             + Simpan Point Kadar
           </button>
         </form>
 
         {/* DAFTAR DATA POINTS */}
-        <div className="mt-4 border-t border-slate-800 pt-3">
+        <div className="border-t border-slate-800 pt-3">
           <span className="text-[11px] font-bold text-slate-400 block mb-2">Riwayat Titik Sampling:</span>
           <div className="flex flex-wrap gap-2">
             {dataPoints.map((point, idx) => (
@@ -221,8 +250,9 @@ export default function TdmChartCalculator() {
                 <span className="text-slate-300 font-medium">{point.label}:</span>
                 <strong className="text-blue-400">{point.value} {target.unit}</strong>
                 <button
+                  type="button"
                   onClick={() => handleRemovePoint(idx)}
-                  className="text-slate-500 hover:text-red-400 font-bold ml-1"
+                  className="text-slate-500 hover:text-red-400 font-bold ml-1 cursor-pointer"
                 >
                   ✖
                 </button>
@@ -230,6 +260,24 @@ export default function TdmChartCalculator() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* AKSI SIMPAN DAN DISTRIBUSI KE STORE V3 */}
+      <div className="flex flex-wrap justify-end gap-2 pt-2">
+        <button
+          type="button"
+          onClick={handleSaveToTracker}
+          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+        >
+          📈 Simpan Grafik & Hasil ke Outcome Tracker
+        </button>
+        <button
+          type="button"
+          onClick={handleAddTdmMedication}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-2"
+        >
+          💊 Tambahkan Rekomendasi TDM ke Regimen Pasien
+        </button>
       </div>
     </div>
   );

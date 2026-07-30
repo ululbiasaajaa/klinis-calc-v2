@@ -6,8 +6,8 @@ export default function NtiCalculator() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  // Ambil data pasien global dari store atas
-  const { patient } = usePatientStore();
+  // AMBIL DATA PASIEN & DISPATCHERS DARI STORE V3
+  const { patient, addLabRecord, addMedication } = usePatientStore();
 
   const [ntiSubTab, setNtiSubTab] = useState('phenytoin');
 
@@ -226,33 +226,107 @@ export default function NtiCalculator() {
 
   const clValue = parseFloat(renalInputs.clcr) || 0;
 
+  // HANDLER AKSI V3 DISPATCHERS
+
+  const handleSaveTdmRecord = (type) => {
+    let param = '';
+    let valStr = '';
+
+    if (type === 'phenytoin') {
+      param = 'TDM Phenytoin Terkoreksi Albumin';
+      valStr = `${phenytoinAdj} mg/L (Obs: ${phenytoinObs} mg/L, Alb: ${albumin} g/dL)`;
+    } else if (type === 'vancomycin') {
+      param = 'TDM Vancomycin AUC 24h';
+      valStr = `AUC: ${vancoAuc} mg·hr/L (Dosis Harian: ${vancoDailyDose} mg)`;
+    } else if (type === 'theophylline') {
+      param = 'TDM Theophylline Level';
+      valStr = `Kadar: ${theoLevel} mcg/mL (Rekomendasi Dosis: ${theoRec.newDose} mg/hr)`;
+    } else if (type === 'warfarin') {
+      param = 'TDM Warfarin & INR';
+      valStr = `INR: ${warfarinInr} (Rekomendasi Dosis Mingguan: ${warfarinRec.newWeekly} mg)`;
+    } else if (type === 'aminoglycoside') {
+      param = `TDM Empiris ${aminoDrug.toUpperCase()}`;
+      valStr = `Dosis: ${aminoCalc.recDose} mg / ${aminoCalc.interval} (ClCr: ${aminoCalc.clcr} mL/min)`;
+    }
+
+    addLabRecord({
+      date: new Date().toLocaleDateString('id-ID'),
+      parameter: param,
+      value: valStr,
+      unit: 'TDM',
+      source: 'Kalkulator NTI & TDM v3'
+    });
+    alert(`✅ Rekam TDM (${param}) berhasil disimpan ke Outcome Tracker Pasien!`);
+  };
+
+  const handleAddTdmMedication = (type) => {
+    let drugName = '';
+    let doseStr = '';
+
+    if (type === 'phenytoin') {
+      drugName = 'Phenytoin (Phenytoin Sodium)';
+      doseStr = `Target Kadar 10-20 mg/L (Kadar Terkoreksi: ${phenytoinAdj} mg/L)`;
+    } else if (type === 'vancomycin') {
+      drugName = 'Vancomycin Infus IV';
+      doseStr = `${vancoDailyDose} mg/hari Dibatasi (Target AUC 400-600 mg·hr/L)`;
+    } else if (type === 'theophylline') {
+      drugName = 'Theophylline / Aminophylline';
+      doseStr = `${theoRec.newDose} mg/hari (Disesuaikan dari Kadar: ${theoLevel} mcg/mL)`;
+    } else if (type === 'warfarin') {
+      drugName = 'Warfarin Oral';
+      doseStr = `${warfarinRec.newWeekly} mg Total Mingguan (Disesuaikan dari INR: ${warfarinInr})`;
+    } else if (type === 'aminoglycoside') {
+      drugName = `${aminoDrug === 'amikacin' ? 'Amikacin' : 'Gentamicin'} IV`;
+      doseStr = `${aminoCalc.recDose} mg tiap ${aminoCalc.interval}`;
+    }
+
+    addMedication({
+      name: drugName,
+      dose: doseStr,
+      category: 'Obat NTI / TDM Khusus',
+      source: 'Kalkulator NTI v3'
+    });
+    alert(`✅ Regimen obat TDM (${drugName}) berhasil ditambahkan ke rekam medis pasien!`);
+  };
+
+  const handleAddRenalMedication = (item) => {
+    const res = item.getCm(clValue);
+    addMedication({
+      name: item.drug,
+      dose: res.dose,
+      category: 'Penyesuaian Dosis Ginjal (ClCr)',
+      source: `ClCr Pasien: ${clValue} mL/min`
+    });
+    alert(`✅ Rekomendasi dosis ginjal untuk ${item.drug} (${res.dose}) berhasil ditambahkan ke regimen obat aktif pasien!`);
+  };
+
   return (
     <div className="space-y-4 text-xs">
       {patient.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | BB: {patient.weightKg || '-'} kg, Usia: {patient.age || '-'} thn, SCr: {patient.serumCreatinine || '-'} mg/dL</span>
-          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Synced</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
         </div>
       )}
 
       {/* SUB-TABS SELECTOR (6 TAB) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-        <button onClick={() => setNtiSubTab('phenytoin')} className={`p-2.5 rounded-xl font-bold border transition-all ${ntiSubTab === 'phenytoin' ? 'bg-blue-600 text-white border-blue-500 shadow-md' : isDark ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>
+        <button type="button" onClick={() => setNtiSubTab('phenytoin')} className={`p-2.5 rounded-xl font-bold border transition-all cursor-pointer ${ntiSubTab === 'phenytoin' ? 'bg-blue-600 text-white border-blue-500 shadow-md' : isDark ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>
           💊 Phenytoin
         </button>
-        <button onClick={() => setNtiSubTab('vancomycin')} className={`p-2.5 rounded-xl font-bold border transition-all ${ntiSubTab === 'vancomycin' ? 'bg-blue-600 text-white border-blue-500 shadow-md' : isDark ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>
+        <button type="button" onClick={() => setNtiSubTab('vancomycin')} className={`p-2.5 rounded-xl font-bold border transition-all cursor-pointer ${ntiSubTab === 'vancomycin' ? 'bg-blue-600 text-white border-blue-500 shadow-md' : isDark ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>
           🧪 Vancomycin
         </button>
-        <button onClick={() => setNtiSubTab('theophylline')} className={`p-2.5 rounded-xl font-bold border transition-all ${ntiSubTab === 'theophylline' ? 'bg-blue-600 text-white border-blue-500 shadow-md' : isDark ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>
+        <button type="button" onClick={() => setNtiSubTab('theophylline')} className={`p-2.5 rounded-xl font-bold border transition-all cursor-pointer ${ntiSubTab === 'theophylline' ? 'bg-blue-600 text-white border-blue-500 shadow-md' : isDark ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>
           ☕ Theophylline
         </button>
-        <button onClick={() => setNtiSubTab('warfarin')} className={`p-2.5 rounded-xl font-bold border transition-all ${ntiSubTab === 'warfarin' ? 'bg-blue-600 text-white border-blue-500 shadow-md' : isDark ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>
+        <button type="button" onClick={() => setNtiSubTab('warfarin')} className={`p-2.5 rounded-xl font-bold border transition-all cursor-pointer ${ntiSubTab === 'warfarin' ? 'bg-blue-600 text-white border-blue-500 shadow-md' : isDark ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>
           🩸 Warfarin
         </button>
-        <button onClick={() => setNtiSubTab('aminoglycoside')} className={`p-2.5 rounded-xl font-bold border transition-all ${ntiSubTab === 'aminoglycoside' ? 'bg-blue-600 text-white border-blue-500 shadow-md' : isDark ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>
+        <button type="button" onClick={() => setNtiSubTab('aminoglycoside')} className={`p-2.5 rounded-xl font-bold border transition-all cursor-pointer ${ntiSubTab === 'aminoglycoside' ? 'bg-blue-600 text-white border-blue-500 shadow-md' : isDark ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>
           🦠 Aminoglikosida
         </button>
-        <button onClick={() => setNtiSubTab('renaldosing')} className={`p-2.5 rounded-xl font-bold border transition-all ${ntiSubTab === 'renaldosing' ? 'bg-blue-600 text-white border-blue-500 shadow-md' : isDark ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>
+        <button type="button" onClick={() => setNtiSubTab('renaldosing')} className={`p-2.5 rounded-xl font-bold border transition-all cursor-pointer ${ntiSubTab === 'renaldosing' ? 'bg-blue-600 text-white border-blue-500 shadow-md' : isDark ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>
           🩺 Renal Dosing
         </button>
       </div>
@@ -264,16 +338,20 @@ export default function NtiCalculator() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block mb-1 font-semibold">Kadar Phenytoin Observasi (mg/L)</label>
-              <input type="number" step="0.1" value={phenytoinObs} onChange={(e) => setPhenytoinObs(e.target.value)} placeholder="e.g. 8.5" className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
+              <input type="number" step="0.1" value={phenytoinObs} onChange={(e) => setPhenytoinObs(e.target.value)} placeholder="e.g. 8.5" className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
             </div>
             <div>
               <label className="block mb-1 font-semibold">Albumin Serum (g/dL)</label>
-              <input type="number" step="0.1" value={albumin} onChange={(e) => setAlbumin(e.target.value)} placeholder="e.g. 2.5" className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
+              <input type="number" step="0.1" value={albumin} onChange={(e) => setAlbumin(e.target.value)} placeholder="e.g. 2.5" className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
             </div>
           </div>
           <div className="p-4 rounded-xl border bg-blue-500/10 border-blue-500/30 flex justify-between items-center">
             <span className="font-bold text-blue-500">Phenytoin Terkoreksi:</span>
             <span className="text-xl font-extrabold text-blue-600 dark:text-blue-400">{phenytoinAdj} mg/L (Target: 10 - 20)</span>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <button type="button" onClick={() => handleSaveTdmRecord('phenytoin')} className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2 px-3 rounded-xl transition-all cursor-pointer">📈 Simpan TDM ke Tracker</button>
+            <button type="button" onClick={() => handleAddTdmMedication('phenytoin')} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-xl shadow-lg transition-all cursor-pointer">➕ Tambahkan ke Regimen Obat</button>
           </div>
         </div>
       )}
@@ -283,15 +361,19 @@ export default function NtiCalculator() {
         <div className={`p-4 rounded-xl border space-y-4 ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
           <h3 className="font-bold text-blue-500">🧪 Vancomycin TDM & Estimasi AUC</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div><label className="block mb-1 font-semibold">BB Pasien (kg)</label><input type="number" value={vancoWeight} onChange={(e) => setVancoWeight(e.target.value)} placeholder="65" className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
-            <div><label className="block mb-1 font-semibold">Serum Creatinine (mg/dL)</label><input type="number" step="0.1" value={vancoScr} onChange={(e) => setVancoScr(e.target.value)} placeholder="1.2" className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
-            <div><label className="block mb-1 font-semibold">Usia (Tahun)</label><input type="number" value={vancoAge} onChange={(e) => setVancoAge(e.target.value)} placeholder="55" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
-            <div><label className="block mb-1 font-semibold">Jenis Kelamin</label><select value={vancoGender} onChange={(e) => setVancoGender(e.target.value)} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
-            <div><label className="block mb-1 font-semibold">Total Dosis Harian (mg/hari)</label><input type="number" value={vancoDailyDose} onChange={(e) => setVancoDailyDose(e.target.value)} placeholder="2000" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
+            <div><label className="block mb-1 font-semibold">BB Pasien (kg)</label><input type="number" value={vancoWeight} onChange={(e) => setVancoWeight(e.target.value)} placeholder="65" className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
+            <div><label className="block mb-1 font-semibold">Serum Creatinine (mg/dL)</label><input type="number" step="0.1" value={vancoScr} onChange={(e) => setVancoScr(e.target.value)} placeholder="1.2" className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
+            <div><label className="block mb-1 font-semibold">Usia (Tahun)</label><input type="number" value={vancoAge} onChange={(e) => setVancoAge(e.target.value)} placeholder="55" className={`w-full p-3 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
+            <div><label className="block mb-1 font-semibold">Jenis Kelamin</label><select value={vancoGender} onChange={(e) => setVancoGender(e.target.value)} className={`w-full p-3 rounded-xl border outline-none text-xs font-semibold cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
+            <div><label className="block mb-1 font-semibold">Total Dosis Harian (mg/hari)</label><input type="number" value={vancoDailyDose} onChange={(e) => setVancoDailyDose(e.target.value)} placeholder="2000" className={`w-full p-3 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
           </div>
           <div className="p-4 rounded-xl border bg-blue-500/10 border-blue-500/30 flex justify-between items-center">
             <span className="font-bold text-blue-500">Estimasi AUC 24 Jam:</span>
             <span className="text-xl font-extrabold text-blue-600 dark:text-blue-400">{vancoAuc} mg·hr/L (Target: 400 - 600)</span>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <button type="button" onClick={() => handleSaveTdmRecord('vancomycin')} className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2 px-3 rounded-xl transition-all cursor-pointer">📈 Simpan AUC ke Tracker</button>
+            <button type="button" onClick={() => handleAddTdmMedication('vancomycin')} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-xl shadow-lg transition-all cursor-pointer">➕ Tambahkan Dosis Vancomycin</button>
           </div>
         </div>
       )}
@@ -303,11 +385,11 @@ export default function NtiCalculator() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block mb-1 font-semibold">Kadar Teofilin Aktual (mcg/mL)</label>
-              <input type="number" step="0.1" value={theoLevel} onChange={(e) => setTheoLevel(e.target.value)} placeholder="6.0" className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
+              <input type="number" step="0.1" value={theoLevel} onChange={(e) => setTheoLevel(e.target.value)} placeholder="6.0" className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
             </div>
             <div>
               <label className="block mb-1 font-semibold">Dosis Harian Saat Ini (mg/hari)</label>
-              <input type="number" value={theoDose} onChange={(e) => setTheoDose(e.target.value)} placeholder="600" className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
+              <input type="number" value={theoDose} onChange={(e) => setTheoDose(e.target.value)} placeholder="600" className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
             </div>
           </div>
           <div className="p-4 rounded-xl border bg-amber-500/10 border-amber-500/30 space-y-2">
@@ -316,6 +398,10 @@ export default function NtiCalculator() {
               <span className="text-xl font-extrabold text-amber-600 dark:text-amber-400">{theoRec.newDose} mg/hari</span>
             </div>
             <p className="text-slate-400 italic text-[11px]">{theoRec.status}</p>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <button type="button" onClick={() => handleSaveTdmRecord('theophylline')} className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2 px-3 rounded-xl transition-all cursor-pointer">📈 Simpan TDM ke Tracker</button>
+            <button type="button" onClick={() => handleAddTdmMedication('theophylline')} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-xl shadow-lg transition-all cursor-pointer">➕ Update Dosis Teofilin</button>
           </div>
         </div>
       )}
@@ -327,11 +413,11 @@ export default function NtiCalculator() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block mb-1 font-semibold">Nilai INR Aktual Pasien</label>
-              <input type="number" step="0.1" value={warfarinInr} onChange={(e) => setWarfarinInr(e.target.value)} placeholder="1.5" className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
+              <input type="number" step="0.1" value={warfarinInr} onChange={(e) => setWarfarinInr(e.target.value)} placeholder="1.5" className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
             </div>
             <div>
               <label className="block mb-1 font-semibold">Total Dosis Warfarin Mingguan (mg/minggu)</label>
-              <input type="number" step="0.5" value={warfarinDoseWeekly} onChange={(e) => setWarfarinDoseWeekly(e.target.value)} placeholder="35" className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
+              <input type="number" step="0.5" value={warfarinDoseWeekly} onChange={(e) => setWarfarinDoseWeekly(e.target.value)} placeholder="35" className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
             </div>
           </div>
           <div className="p-4 rounded-xl border bg-emerald-500/10 border-emerald-500/30 space-y-2">
@@ -340,6 +426,10 @@ export default function NtiCalculator() {
               <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{warfarinRec.newWeekly} mg/minggu</span>
             </div>
             <p className="text-slate-400 italic text-[11px]">{warfarinRec.action}</p>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <button type="button" onClick={() => handleSaveTdmRecord('warfarin')} className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2 px-3 rounded-xl transition-all cursor-pointer">📈 Simpan INR & Dosis ke Tracker</button>
+            <button type="button" onClick={() => handleAddTdmMedication('warfarin')} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-xl shadow-lg transition-all cursor-pointer">➕ Update Regimen Warfarin</button>
           </div>
         </div>
       )}
@@ -351,16 +441,16 @@ export default function NtiCalculator() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block mb-1 font-semibold">Jenis Obat</label>
-              <select value={aminoDrug} onChange={(e) => setAminoDrug(e.target.value)} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
+              <select value={aminoDrug} onChange={(e) => setAminoDrug(e.target.value)} className={`w-full p-3 rounded-xl border outline-none text-xs font-semibold cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
                 <option value="amikacin">Amikacin (15 mg/kg IBW)</option>
                 <option value="gentamicin">Gentamicin (5-7 mg/kg IBW)</option>
               </select>
             </div>
-            <div><label className="block mb-1 font-semibold">BB Aktual (kg)</label><input type="number" value={aminoWeight} onChange={(e) => setAminoWeight(e.target.value)} className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
-            <div><label className="block mb-1 font-semibold">Tinggi Badan (cm)</label><input type="number" value={aminoHeight} onChange={(e) => setAminoHeight(e.target.value)} className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
-            <div><label className="block mb-1 font-semibold">Usia (Tahun)</label><input type="number" value={aminoAge} onChange={(e) => setAminoAge(e.target.value)} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
-            <div><label className="block mb-1 font-semibold">Serum Creatinine (mg/dL)</label><input type="number" step="0.1" value={aminoScr} onChange={(e) => setAminoScr(e.target.value)} className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
-            <div><label className="block mb-1 font-semibold">Jenis Kelamin</label><select value={aminoGender} onChange={(e) => setAminoGender(e.target.value)} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
+            <div><label className="block mb-1 font-semibold">BB Aktual (kg)</label><input type="number" value={aminoWeight} onChange={(e) => setAminoWeight(e.target.value)} className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
+            <div><label className="block mb-1 font-semibold">Tinggi Badan (cm)</label><input type="number" value={aminoHeight} onChange={(e) => setAminoHeight(e.target.value)} className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
+            <div><label className="block mb-1 font-semibold">Usia (Tahun)</label><input type="number" value={aminoAge} onChange={(e) => setAminoAge(e.target.value)} className={`w-full p-3 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
+            <div><label className="block mb-1 font-semibold">Serum Creatinine (mg/dL)</label><input type="number" step="0.1" value={aminoScr} onChange={(e) => setAminoScr(e.target.value)} className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} /></div>
+            <div><label className="block mb-1 font-semibold">Jenis Kelamin</label><select value={aminoGender} onChange={(e) => setAminoGender(e.target.value)} className={`w-full p-3 rounded-xl border outline-none text-xs font-semibold cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
           </div>
           <div className="p-4 rounded-xl border bg-blue-500/10 border-blue-500/30 flex justify-between items-center">
             <div>
@@ -370,6 +460,10 @@ export default function NtiCalculator() {
             <div className="text-right">
               <span className="text-xl font-extrabold text-blue-600 dark:text-blue-400">{aminoCalc.recDose} mg / {aminoCalc.interval}</span>
             </div>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <button type="button" onClick={() => handleSaveTdmRecord('aminoglycoside')} className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2 px-3 rounded-xl transition-all cursor-pointer">📈 Simpan ke Tracker</button>
+            <button type="button" onClick={() => handleAddTdmMedication('aminoglycoside')} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-xl shadow-lg transition-all cursor-pointer">➕ Tambahkan Dosis Aminoglikosida</button>
           </div>
         </div>
       )}
@@ -401,7 +495,7 @@ export default function NtiCalculator() {
                     <span className={`font-bold text-xs ${isDark ? 'text-white' : 'text-slate-900'}`}>{item.drug}</span>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md w-fit ${res.color}`}>{res.status}</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-2">
                     <div className={`p-2 rounded-lg border ${isDark ? 'bg-slate-950 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
                       <span className="block text-[10px] text-slate-500 font-semibold">Dosis Normal:</span>
                       {item.normalDose}
@@ -410,6 +504,15 @@ export default function NtiCalculator() {
                       <span className="block text-[10px] text-blue-500 font-semibold">Rekomendasi Dosis Disesuaikan:</span>
                       {res.dose}
                     </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleAddRenalMedication(item)}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-lg text-[10px] shadow transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      ➕ Tambahkan Dosis Ginjal Obat Ini
+                    </button>
                   </div>
                 </div>
               );

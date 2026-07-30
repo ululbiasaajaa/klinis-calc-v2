@@ -8,8 +8,8 @@ export default function SteroidConversionCalculator() {
   const { lang } = useLanguage();
   const isDark = theme === 'dark';
 
-  // Ambil data pasien global dari store atas
-  const { patient } = usePatientStore();
+  // AMBIL DATA PASIEN GLOBAL DAN DISPATCHERS V3
+  const { patient, addMedication, addLabRecord } = usePatientStore();
 
   // Tabel Equivalensi Steroid (Standar Referensi Klinis)
   // Dosis setara dengan 5 mg Prednison / Prednisolone
@@ -45,26 +45,48 @@ export default function SteroidConversionCalculator() {
 
   const convertedDose = calculateConversion();
 
+  // HANDLER AKSI V3 DISPATCHERS
+  const handleAddToMedications = () => {
+    addMedication({
+      name: targetObj.name,
+      dose: `${convertedDose} mg / hari (Konversi dari ${fromDose} mg ${sourceObj.name})`,
+      category: 'Kortikosteroid Equipotent',
+      source: `Durasi Kerja: ${targetObj.duration}`
+    });
+    alert(`✅ Dosis target steroid (${targetObj.name} ${convertedDose} mg) berhasil ditambahkan ke regimen obat aktif pasien!`);
+  };
+
+  const handleSaveToTracker = () => {
+    addLabRecord({
+      date: new Date().toLocaleDateString('id-ID'),
+      parameter: 'Konversi Dosis Kortikosteroid',
+      value: `${fromDose} mg ${sourceObj.name.split(' ')[0]} ➔ ${convertedDose} mg ${targetObj.name.split(' ')[0]}`,
+      unit: 'mg/hari',
+      source: 'Steroid Conversion Calculator v3'
+    });
+    alert(`✅ Rekam Konversi Steroid berhasil disimpan ke Outcome Tracker Pasien!`);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-xs">
       
       {patient.patientName && (
-        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between text-xs">
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Evaluasi konversi dosis kortikosteroid.</span>
-          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Active</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* STEROID ASAL */}
         <div>
-          <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Steroid Saat Ini (Asal):' : 'Current Steroid:'}
           </label>
           <select
             value={fromSteroid}
             onChange={(e) => setFromSteroid(e.target.value)}
-            className={`w-full p-3 rounded-xl border outline-none text-xs font-bold ${
+            className={`w-full p-3 rounded-xl border outline-none font-bold cursor-pointer ${
               isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
             }`}
           >
@@ -76,7 +98,7 @@ export default function SteroidConversionCalculator() {
 
         {/* DOSIS ASAL */}
         <div>
-          <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Dosis Asal (mg/hari):' : 'Current Dose (mg/day):'}
           </label>
           <input
@@ -84,7 +106,7 @@ export default function SteroidConversionCalculator() {
             value={fromDose}
             onChange={(e) => setFromDose(e.target.value)}
             placeholder="e.g. 16"
-            className={`w-full p-3 rounded-xl border outline-none text-xs ${
+            className={`w-full p-3 rounded-xl border outline-none font-semibold ${
               isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
             }`}
           />
@@ -92,13 +114,13 @@ export default function SteroidConversionCalculator() {
 
         {/* STEROID TUJUAN */}
         <div>
-          <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Target Steroid (Konversi):' : 'Target Steroid:'}
           </label>
           <select
             value={targetSteroid}
             onChange={(e) => setTargetSteroid(e.target.value)}
-            className={`w-full p-3 rounded-xl border outline-none text-xs font-bold ${
+            className={`w-full p-3 rounded-xl border outline-none font-bold cursor-pointer ${
               isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
             }`}
           >
@@ -125,7 +147,7 @@ export default function SteroidConversionCalculator() {
       </div>
 
       {/* CATATAN KLINIS */}
-      <div className={`p-4 rounded-xl border text-xs space-y-2 ${
+      <div className={`p-4 rounded-xl border space-y-2 ${
         isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
       }`}>
         <p className={`font-bold ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
@@ -135,6 +157,24 @@ export default function SteroidConversionCalculator() {
           • <strong>Potensi Anti-Inflamasi & Durasi:</strong> Deksametason memiliki potensi anti-inflamasi jauh lebih kuat (~7.5x dibanding Prednison) dengan durasi kerja panjang (Long-acting).<br />
           • <strong>Tappering Off:</strong> Penggunaan kortikosteroid jangka panjang (&gt;2 minggu) wajib diturunkan secara bertahap (*tappering off*) untuk menghindari insufisiensi adrenal sekunder.
         </p>
+      </div>
+
+      {/* AKSI SIMPAN DAN DISTRIBUSI KE STORE V3 */}
+      <div className="flex flex-wrap justify-end gap-2 pt-2">
+        <button
+          type="button"
+          onClick={handleSaveToTracker}
+          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+        >
+          📈 Simpan Konversi ke Outcome Tracker
+        </button>
+        <button
+          type="button"
+          onClick={handleAddToMedications}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-2"
+        >
+          💊 Tambahkan Dosis Steroid Target ke Regimen Aktif
+        </button>
       </div>
     </div>
   );

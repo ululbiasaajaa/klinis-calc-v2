@@ -8,8 +8,8 @@ export default function PregnancyCalculator() {
   const { lang } = useLanguage();
   const isDark = theme === 'dark';
 
-  // Ambil data pasien global dari store atas
-  const { patient } = usePatientStore();
+  // AMBIL DATA PASIEN GLOBAL DAN DISPATCHERS V3
+  const { patient, addLabRecord, addMedication } = usePatientStore();
 
   // Default HPHT (Hari Pertama Haid Terakhir) diset ke beberapa bulan lalu
   const [hpht, setHpht] = useState(() => {
@@ -21,7 +21,6 @@ export default function PregnancyCalculator() {
   // Auto-sync data dari Patient Context Bar jika tersedia
   useEffect(() => {
     if (patient) {
-      // Jika di store pasien ada properti hpht, sinkronkan di sini
       if (patient.hpht) {
         setHpht(patient.hpht);
       }
@@ -54,13 +53,13 @@ export default function PregnancyCalculator() {
 
     // Trimester Check
     let trimester = 'Trimester I (0 - 13 minggu)';
-    let color = 'text-blue-500 bg-blue-500/10';
+    let color = 'text-blue-500 bg-blue-500/15 border-blue-500/30';
     if (weeks >= 14 && weeks <= 27) {
       trimester = 'Trimester II (14 - 27 minggu)';
-      color = 'text-emerald-500 bg-emerald-500/10';
+      color = 'text-emerald-500 bg-emerald-500/15 border-emerald-500/30';
     } else if (weeks >= 28) {
       trimester = 'Trimester III (28+ minggu / Menjelang Term)';
-      color = 'text-amber-500 bg-amber-500/10';
+      color = 'text-amber-500 bg-amber-500/15 border-amber-500/30';
     }
 
     const formatDate = (dateObj) => {
@@ -82,34 +81,59 @@ export default function PregnancyCalculator() {
     };
   })();
 
+  // HANDLER AKSI V3 DISPATCHERS
+
+  const handleSaveToTracker = () => {
+    if (!calculationResult || calculationResult.status !== 'success') return;
+
+    addLabRecord({
+      date: new Date().toLocaleDateString('id-ID'),
+      parameter: 'Estimasi Kehamilan & HPL (Naegle)',
+      value: `HPL: ${calculationResult.edd} | Usia: ${calculationResult.weeks} mg ${calculationResult.days} hr`,
+      unit: 'Minggu Gestasi',
+      source: `HPHT: ${hpht} (${calculationResult.trimester})`
+    });
+    alert(`✅ Data Kehamilan berhasil disimpan ke Outcome Tracker Pasien!`);
+  };
+
+  const handleAddAncSupplements = () => {
+    addMedication({
+      name: 'Tablet Tambah Darah (Fe) + Asam Folat 400 mcg + Kalsium',
+      dose: '1x1 Tablet Sehari (Suplemen Rutin Antenatal Care / ANC)',
+      category: 'Suplemen Kehamilan / Obstetri',
+      source: `Usia Kehamilan: ${calculationResult?.weeks || '-'} Minggu`
+    });
+    alert(`✅ Paket Suplemen ANC (Fe & Asam Folat) berhasil ditambahkan ke regimen obat aktif pasien!`);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-xs">
       
       {patient.patientName && (
-        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between text-xs">
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Kalkulator usia kehamilan & HPL.</span>
-          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Active</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
         </div>
       )}
 
-      <div className={`p-4 rounded-xl border text-xs ${
+      <div className={`p-4 rounded-xl border ${
         isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-blue-50 border-blue-200 text-slate-700'
       }`}>
-        <p className="font-bold mb-1">🤰 Kalkulator Usia Kehamilan & HPL (Naegle&apos;s Rule):</p>
-        <p>
+        <p className="font-bold mb-1 text-blue-400">🤰 Kalkulator Usia Kehamilan & HPL (Naegle&apos;s Rule v3):</p>
+        <p className="leading-relaxed">
           Digunakan di IGD, Poli Kandungan (KIA), dan Praktik Kebidanan untuk menentukan Hari Perkiraan Lahir (HPL) serta Usia Kehamilan saat ini berdasarkan HPHT (Hari Pertama Haid Terakhir).
         </p>
       </div>
 
       <div>
-        <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+        <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
           Tanggal HPHT (Hari Pertama Haid Terakhir):
         </label>
         <input
           type="date"
           value={hpht}
           onChange={(e) => setHpht(e.target.value)}
-          className={`w-full p-3 rounded-xl border outline-none text-xs font-bold ${
+          className={`w-full p-3 rounded-xl border outline-none font-bold cursor-pointer ${
             isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
           }`}
         />
@@ -140,11 +164,29 @@ export default function PregnancyCalculator() {
 
             <div className={`p-4 rounded-xl border flex flex-col justify-between ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
               <span className="text-xs text-slate-400 font-bold block mb-1">📊 FASE TRIMESTER</span>
-              <div className={`text-xs font-bold px-3 py-2 rounded-lg w-fit ${calculationResult.color}`}>
+              <div className={`text-xs font-bold px-3 py-2 rounded-lg w-fit border ${calculationResult.color}`}>
                 {calculationResult.trimester}
               </div>
               <span className="text-[10px] text-slate-500">Penentuan pemantauan nutrisi & skrining janin.</span>
             </div>
+          </div>
+
+          {/* AKSI SIMPAN DAN DISTRIBUSI KE STORE V3 */}
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={handleSaveToTracker}
+              className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+            >
+              📈 Simpan Data HPL ke Outcome Tracker
+            </button>
+            <button
+              type="button"
+              onClick={handleAddAncSupplements}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-2"
+            >
+              💊 Tambahkan Suplemen ANC (Fe & Folat) ke Regimen
+            </button>
           </div>
         </div>
       )}

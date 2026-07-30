@@ -1,7 +1,10 @@
 import React from 'react';
 
+/**
+ * @deprecated
+ * Di v3 Enterprise, fungsi PatientHeader telah digantikan sepenuhnya 
+ * oleh PatientContextBar.jsx sebagai Single Source of Truth terpusat.
+ */
 export default function PatientHeader() {
-  // Kotak Identitas Pasien lokal sudah dihapus sepenuhnya
-  // karena sudah digantikan oleh Patient Context Bar global di atas.
   return null;
 }

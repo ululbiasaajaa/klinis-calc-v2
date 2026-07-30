@@ -8,7 +8,8 @@ export default function RenalDosingChecker() {
   const { lang } = useLanguage();
   const isDark = theme === 'dark';
 
-  const { patient } = usePatientStore();
+  // AMBIL DATA PASIEN GLOBAL DAN DISPATCHERS V3
+  const { patient, addMedication, addLabRecord } = usePatientStore();
   const [inputs, setInputs] = useState({ clcr: '45' });
 
   // Auto-sync & hitung otomatis dari Patient Context Bar setiap data pasien berubah
@@ -81,24 +82,49 @@ export default function RenalDosingChecker() {
 
   const clValue = parseFloat(inputs.clcr) || 0;
 
+  // HANDLER AKSI V3 DISPATCHERS
+  const handleAddRenalMedication = (item) => {
+    const res = item.getCm(clValue);
+    addMedication({
+      name: item.drug,
+      dose: res.dose,
+      category: 'Penyesuaian Dosis Ginjal (ClCr)',
+      source: `ClCr Pasien: ${clValue} mL/min`
+    });
+    alert(`✅ Rekomendasi dosis ginjal untuk ${item.drug} (${res.dose}) berhasil ditambahkan ke regimen obat aktif pasien!`);
+  };
+
+  const handleSaveToTracker = () => {
+    addLabRecord({
+      date: new Date().toLocaleDateString('id-ID'),
+      parameter: 'Evaluasi Penyesuaian Dosis Ginjal (ClCr)',
+      value: `ClCr Terhitung: ${clValue} mL/min`,
+      unit: 'mL/min',
+      source: 'Renal Dosing Checker v3'
+    });
+    alert(`✅ Evaluasi Renal Dosing berhasil disimpan ke Outcome Tracker Pasien!`);
+  };
+
   return (
-    <div className="space-y-6">
-      <div className={`p-4 rounded-xl border text-xs ${
+    <div className="space-y-6 text-xs">
+      {patient.patientName && (
+        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Nilai ClCr di bawah otomatis dihitung dari profil pasien.</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
+        </div>
+      )}
+
+      <div className={`p-4 rounded-xl border ${
         isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-blue-50 border-blue-200 text-slate-700'
       }`}>
-        <p className="font-bold mb-1">💊 Modul Auto-Checker Penyesuaian Dosis Obat Berbasis GFR / ClCr:</p>
-        <p>
-          {patient.patientName ? (
-            <span className="text-emerald-400 font-semibold block mb-1">
-              ✨ Pasien Aktif Terdeteksi: {patient.patientName} (RM: {patient.patientId || '-'}). Nilai ClCr di bawah otomatis dihitung dari profil pasien!
-            </span>
-          ) : null}
-          Masukkan atau sesuaikan nilai klirens kreatinin (ClCr) pasien di bawah ini untuk melihat rekomendasi penyesuaian dosis obat.
+        <p className="font-bold mb-1 text-blue-400">💊 Modul Auto-Checker Penyesuaian Dosis Obat Berbasis GFR / ClCr (v3):</p>
+        <p className="leading-relaxed">
+          Masukkan atau sesuaikan nilai klirens kreatinin (ClCr) pasien di bawah ini untuk melihat rekomendasi penyesuaian dosis obat high-risk secara real-time.
         </p>
       </div>
 
       <div>
-        <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+        <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
           Klirens Kreatinin Pasien (ClCr in mL/min):
         </label>
         <input
@@ -106,7 +132,7 @@ export default function RenalDosingChecker() {
           value={inputs.clcr}
           onChange={(e) => setInputs({ ...inputs, clcr: e.target.value })}
           placeholder="e.g. 45"
-          className={`w-full p-3 rounded-xl border outline-none text-xs font-bold ${
+          className={`w-full p-3 rounded-xl border outline-none font-bold ${
             isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
           }`}
         />
@@ -114,7 +140,7 @@ export default function RenalDosingChecker() {
 
       {/* TABEL HASIL PENYESUAIAN DOSIS */}
       <div className="space-y-3">
-        <h3 className={`font-bold text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+        <h3 className={`font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
           📋 Rekomendasi Penyesuaian Dosis untuk ClCr: {clValue} mL/min
         </h3>
 
@@ -125,24 +151,44 @@ export default function RenalDosingChecker() {
               isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
             }`}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                <span className={`font-bold text-xs ${isDark ? 'text-white' : 'text-slate-900'}`}>{item.drug}</span>
+                <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{item.drug}</span>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md w-fit ${res.color}`}>
                   {res.status}
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <div className={`p-2 rounded-lg border ${isDark ? 'bg-slate-950 border-slate-800/80 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-950 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
                   <span className="block text-[10px] text-slate-500 font-semibold">Dosis Normal:</span>
                   {item.normalDose}
                 </div>
-                <div className={`p-2 rounded-lg border font-bold ${isDark ? 'bg-blue-950/30 border-blue-900/50 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+                <div className={`p-2.5 rounded-lg border font-bold ${isDark ? 'bg-blue-950/30 border-blue-900/50 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
                   <span className="block text-[10px] text-blue-500 font-semibold">Rekomendasi Dosis Disesuaikan:</span>
                   {res.dose}
                 </div>
               </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => handleAddRenalMedication(item)}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-lg text-[10px] shadow transition-all cursor-pointer flex items-center gap-1"
+                >
+                  ➕ Tambahkan Dosis Ginjal Obat Ini ke Regimen
+                </button>
+              </div>
             </div>
           );
         })}
+      </div>
+
+      {/* AKSI SIMPAN KE TRACKER */}
+      <div className="flex justify-end pt-2">
+        <button
+          type="button"
+          onClick={handleSaveToTracker}
+          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+        >
+          📈 Simpan Evaluasi Renal Dosing ke Outcome Tracker
+        </button>
       </div>
     </div>
   );

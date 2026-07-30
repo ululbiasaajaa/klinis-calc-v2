@@ -6,34 +6,26 @@ export default function AntibioticDoseCalculator() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  // Ambil data pasien global dari store atas
-  const { patient } = usePatientStore();
+  // AMBIL PASIEN & COMPUTED CLINICAL CONTEXT LANGSUNG DARI STORE V3
+  const { patient, getClinicalContext, addMedication } = usePatientStore();
+  const { clcr } = getClinicalContext();
 
   // State Input Pasien & Pemilihan Antibiotik
   const [antibiotic, setAntibiotic] = useState('meropenem');
   const [clcrInput, setClcrInput] = useState('65'); // ml/min
 
-  // Auto-sync & hitung otomatis ClCr secara real-time dari Patient Context Bar
+  // Auto-sync ClCr secara real-time dari Computed Context v3
   useEffect(() => {
-    if (patient) {
-      const age = Number(patient.age);
-      const wt = Number(patient.weightKg);
-      const scr = Number(patient.serumCreatinine);
-      const isFemale = patient.gender === 'Perempuan';
-
-      if (age > 0 && wt > 0 && scr > 0) {
-        let calcClCr = ((140 - age) * wt) / (72 * scr);
-        if (isFemale) calcClCr *= 0.85;
-        setClcrInput(calcClCr.toFixed(1));
-      }
+    if (clcr > 0) {
+      setClcrInput(clcr.toString());
     }
-  }, [patient]);
+  }, [clcr]);
 
   // Database Dosis & Penyesuaian Berdasarkan Fungsi Ginjal (ClCr)
   const antibioticDatabase = {
     meropenem: {
       name: 'Meropenem (Injeksi IV)',
-      standardDose: '1g setiap 8 jam (Infus standar)',
+      standardDose: '1 g setiap 8 jam (Infus standar)',
       adjustments: [
         { minClcr: 50, maxClcr: 999, dose: '1 g setiap 8 jam', note: 'Fungsi ginjal normal / sedikit turun. Dosis standar.' },
         { minClcr: 26, maxClcr: 49, dose: '1 g setiap 12 jam', note: 'Penyesuaian moderat.' },
@@ -45,14 +37,14 @@ export default function AntibioticDoseCalculator() {
       name: 'Levofloxacin (Oral / IV)',
       standardDose: '500 mg atau 750 mg setiap 24 jam',
       adjustments: [
-        { minClcr: 50, maxClcr: 999, dose: '500 mg / 24 jam (atau 750 mg/48 jam)', note: 'Fungsi ginjal normal.' },
-        { minClcr: 20, maxClcr: 49, dose: 'Dosis awal 500 mg, lalu 250 mg / 24 jam (atau 500 mg/48 jam)', note: 'Penyesuaian ClCr 20-49 mL/min.' },
-        { minClcr: 0, maxClcr: 19, dose: 'Dosis awal 500 mg, lalu 250 mg / 48 jam (atau 250 mg/24 jam untuk 750mg)', note: 'Penyesuaian berat / Hemodialisis.' }
+        { minClcr: 50, maxClcr: 999, dose: '500 mg / 24 jam (atau 750 mg / 48 jam)', note: 'Fungsi ginjal normal.' },
+        { minClcr: 20, maxClcr: 49, dose: 'Dosis awal 500 mg, lalu 250 mg / 24 jam', note: 'Penyesuaian ClCr 20-49 mL/min.' },
+        { minClcr: 0, maxClcr: 19, dose: 'Dosis awal 500 mg, lalu 250 mg / 48 jam', note: 'Penyesuaian berat / Hemodialisis.' }
       ]
     },
     cefepime: {
       name: 'Cefepime (Injeksi IV)',
-      standardDose: '1g - 2g setiap 8-12 jam',
+      standardDose: '1 g - 2 g setiap 8-12 jam',
       adjustments: [
         { minClcr: 50, maxClcr: 999, dose: '2 g setiap 8 jam (Kasus berat)', note: 'Dosis normal.' },
         { minClcr: 30, maxClcr: 49, dose: '2 g setiap 12 jam', note: 'Turunkan frekuensi / dosis.' },
@@ -65,8 +57,8 @@ export default function AntibioticDoseCalculator() {
       standardDose: '4.5 g setiap 6 jam',
       adjustments: [
         { minClcr: 50, maxClcr: 999, dose: '4.5 g setiap 6 jam', note: 'Dosis standar infeksi berat.' },
-        { minClcr: 20, maxClcr: 49, dose: '3.375 g setiap 6 jam (atau 4.5g / 8 jam)', note: 'Penyesuaian moderat.' },
-        { minClcr: 0, maxClcr: 19, dose: '2.25 g setiap 6 jam (atau 3.375g / 12 jam)', note: 'Penyesuaian gagal ginjal / HD.' }
+        { minClcr: 20, maxClcr: 49, dose: '3.375 g setiap 6 jam (atau 4.5 g / 8 jam)', note: 'Penyesuaian moderat.' },
+        { minClcr: 0, maxClcr: 19, dose: '2.25 g setiap 6 jam (atau 3.375 g / 12 jam)', note: 'Penyesuaian gagal ginjal / HD.' }
       ]
     },
     vancomycin: {
@@ -76,6 +68,23 @@ export default function AntibioticDoseCalculator() {
         { minClcr: 50, maxClcr: 999, dose: '15-20 mg/kg tiap 8-12 jam', note: 'Pantau kadar Trough / AUC.' },
         { minClcr: 10, maxClcr: 49, dose: '15-20 mg/kg tiap 24-48 jam', note: 'Perpanjang interval berdasarkan kadar serum kreatinin.' },
         { minClcr: 0, maxClcr: 9, dose: '15-20 mg/kg dosis muatan (loading), lalu sesuaikan dengan TDM', note: 'Pasien HD (dosis pemeliharaan pasca cuci darah).' }
+      ]
+    },
+    ciprofloxacin: {
+      name: 'Ciprofloxacin (Oral / IV)',
+      standardDose: '400 mg IV / 500 mg Oral tiap 12 jam',
+      adjustments: [
+        { minClcr: 50, maxClcr: 999, dose: '400 mg IV / 500 mg Oral tiap 12 jam', note: 'Dosis standar.' },
+        { minClcr: 30, maxClcr: 49, dose: '200-400 mg IV / 250-500 mg Oral tiap 12 jam', note: 'Penyesuaian dosis ringan-sedang.' },
+        { minClcr: 0, maxClcr: 29, dose: '200-400 mg IV / 250-500 mg Oral tiap 18-24 jam', note: 'Penyesuaian berat.' }
+      ]
+    },
+    fluconazole: {
+      name: 'Fluconazole (Oral / IV)',
+      standardDose: '200 - 400 mg setiap 24 jam',
+      adjustments: [
+        { minClcr: 50, maxClcr: 999, dose: '200 - 400 mg tiap 24 jam', note: 'Dosis standar (100%).' },
+        { minClcr: 0, maxClcr: 49, dose: '50% dari dosis standar (misal: 100-200 mg) tiap 24 jam', note: 'Reduksi 50% dosis harian.' }
       ]
     }
   };
@@ -88,19 +97,30 @@ export default function AntibioticDoseCalculator() {
     (item) => clcrVal >= item.minClcr && clcrVal <= item.maxClcr
   ) || selectedAbx.adjustments[selectedAbx.adjustments.length - 1];
 
+  // Aksi simpan dosis yang disesuaikan ke daftar obat pasien v3
+  const handleAddToMedications = () => {
+    addMedication({
+      name: selectedAbx.name,
+      dose: currentRecommendation.dose,
+      category: 'Antibiotik (Renal Adjusted)',
+      source: `Auto-Sync ClCr (${clcrVal} mL/min)`
+    });
+    alert(`✅ ${selectedAbx.name} (${currentRecommendation.dose}) berhasil ditambahkan ke daftar obat aktif pasien!`);
+  };
+
   return (
     <div className="space-y-6 text-xs">
       
       {patient.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | ClCr terhitung otomatis dari profil pasien.</span>
-          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">Synced</span>
+          <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
         </div>
       )}
 
       {/* HEADER INFORMASI */}
       <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-        <h3 className="font-bold text-blue-500 mb-2">🦠 Kalkulator & Penyesuaian Dosis Antibiotik (Ginjal)</h3>
+        <h3 className="font-bold text-blue-500 mb-2">🦠 Kalkulator & Penyesuaian Dosis Antibiotik (Ginjal v3)</h3>
         <p className="text-slate-400 text-[11px] mb-4">
           Menentukan rekomendasi penyesuaian dosis obat antimikroba berdasarkan Klirens Kreatinin (ClCr) pasien untuk mencegah toksisitas.
         </p>
@@ -111,7 +131,7 @@ export default function AntibioticDoseCalculator() {
             <select
               value={antibiotic}
               onChange={(e) => setAntibiotic(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
             >
               {Object.keys(antibioticDatabase).map((key) => (
                 <option key={key} value={key}>{antibioticDatabase[key].name}</option>
@@ -138,7 +158,7 @@ export default function AntibioticDoseCalculator() {
       }`}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b pb-3 border-blue-500/20">
           <div>
-            <span className="text-[10px] text-blue-500 font-bold uppercase">Evaluasi Regimen</span>
+            <span className="text-[10px] text-blue-500 font-bold uppercase">Evaluasi Regimen v3</span>
             <h4 className={`text-base font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedAbx.name}</h4>
           </div>
           <div className="px-3 py-1.5 rounded-xl border bg-blue-500/10 border-blue-500/30 text-blue-500 font-bold text-xs">
@@ -156,6 +176,17 @@ export default function AntibioticDoseCalculator() {
             <span className="text-[10px] text-amber-500 font-bold block mb-1">⚠️ Catatan Klinis & Penyesuaian:</span>
             <p className="text-slate-300 text-[11px] leading-relaxed">{currentRecommendation.note}</p>
           </div>
+        </div>
+
+        {/* TOMBOL AUTO-PUSH KE REGIMEN OBAT PASIEN V3 */}
+        <div className="pt-3 border-t border-blue-500/20 flex justify-end">
+          <button
+            type="button"
+            onClick={handleAddToMedications}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg transition-all text-xs cursor-pointer flex items-center gap-2"
+          >
+            ➕ Tambahkan ke Regimen Obat Pasien
+          </button>
         </div>
       </div>
 
