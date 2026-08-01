@@ -20,6 +20,7 @@ import DrugScannerModal from './components/DrugScannerModal';
 import ClinicalOutcomeTracker from './components/ClinicalOutcomeTracker';
 import CommandPaletteModal from './components/CommandPaletteModal';
 import SoapGenerator from './components/SoapGenerator';
+import AboutModal from './components/AboutModal';
 
 import NtiCalculator from './calculators/NtiCalculator';
 import DdiCalculator from './calculators/DdiCalculator';
@@ -43,7 +44,7 @@ import FraminghamCalculator from './calculators/FraminghamCalculator';
 import AntibioticDoseCalculator from './calculators/AntibioticDoseCalculator';
 import GoutCalculator from './calculators/GoutCalculator';
 import LipidCalculator from './calculators/LipidCalculator';
-import ToxicologyCalculator from './calculators/ToxicologyCalculator'; // <-- MODUL TOKSIKOLOGI
+import ToxicologyCalculator from './calculators/ToxicologyCalculator';
 
 import { useLanguage } from './context/LanguageContext';
 import { useTheme } from './context/ThemeContext';
@@ -69,6 +70,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
@@ -197,7 +199,7 @@ export default function App() {
     { id: 'crrt', name: 'Dosis ICU & CRRT', category: 'Dosis & Obat', icon: '🌡️' },
     { id: 'gout', name: 'Kalkulator Asam Urat & Gout', category: 'Organ & Fungsi', icon: '🧬' },
     { id: 'lipid', name: 'Profil Lipid & Risiko Kolesterol', category: 'Organ & Fungsi', icon: '❤️' },
-    { id: 'toxicology', name: 'Toksikologi Klinis & Keracunan', category: 'Fisiologi & Cairan', icon: '🧪' }, // <-- DITAMBAHKAN DISINI
+    { id: 'toxicology', name: 'Toksikologi Klinis & Keracunan', category: 'Fisiologi & Cairan', icon: '🧪' },
     { id: 'framingham', name: 'Risiko Jantung (Framingham 10-Yr)', category: 'Organ & Fungsi', icon: '❤️' },
     { id: 'gcs', name: 'Neurologi IGD (GCS & Kesadaran)', category: 'Fisiologi & Cairan', icon: '🧠' },
     { id: 'triage', name: 'Triase IGD (Australasian Triage Scale)', category: 'Fisiologi & Cairan', icon: '🚑' },
@@ -540,6 +542,8 @@ export default function App() {
         }}
       />
 
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
+
       <Sidebar
         menuItems={menuItems}
         activeTab={activeTab}
@@ -548,6 +552,7 @@ export default function App() {
         setSearchQuery={setSearchQuery}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
+        onOpenAbout={() => setShowAbout(true)}
       />
 
       <main className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full space-y-6">
@@ -738,7 +743,7 @@ export default function App() {
           {activeTab === 'crrt' && <CrrtDoseCalculator />}
           {activeTab === 'gout' && <GoutCalculator onSaveHistory={(entry) => saveToHistoryLog(entry.type, entry.summary)} />}
           {activeTab === 'lipid' && <LipidCalculator onSaveHistory={(entry) => saveToHistoryLog(entry.type, entry.summary)} />}
-          {activeTab === 'toxicology' && <ToxicologyCalculator onSaveHistory={(entry) => saveToHistoryLog(entry.type, entry.summary)} />} {/* <-- RENDER MODUL TOKSIKOLOGI */}
+          {activeTab === 'toxicology' && <ToxicologyCalculator onSaveHistory={(entry) => saveToHistoryLog(entry.type, entry.summary)} />}
           {activeTab === 'framingham' && <FraminghamCalculator />}
           {activeTab === 'gcs' && <GcsCalculator />}
           {activeTab === 'triage' && <TriageCalculator />}

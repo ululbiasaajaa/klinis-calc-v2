@@ -10,6 +10,7 @@ export default function Sidebar({
   setSearchQuery,
   isSidebarOpen,
   setIsSidebarOpen,
+  onOpenAbout, // <-- PROPS UNTUK MEMBUKA MODAL ABOUT
 }) {
   const { lang, toggleLang, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
@@ -204,8 +205,22 @@ export default function Sidebar({
             })}
           </div>
 
+          {/* TOMBOL TENTANG APLIKASI DI SIDEBAR */}
+          <div className="pt-2 mt-2 border-t border-slate-700/50 shrink-0">
+            <button
+              onClick={onOpenAbout}
+              className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border ${
+                isDark 
+                  ? 'bg-slate-800 hover:bg-slate-700 text-cyan-400 border-slate-700' 
+                  : 'bg-slate-100 hover:bg-slate-200 text-cyan-700 border-slate-300'
+              }`}
+            >
+              <span>ℹ️</span> Tentang Aplikasi & Lisensi
+            </button>
+          </div>
+
           {/* FOOTER SIDEBAR */}
-          <div className={`border-t pt-3 mt-2 text-[10px] text-center shrink-0 ${
+          <div className={`border-t pt-2 mt-2 text-[10px] text-center shrink-0 ${
             isDark ? 'border-slate-800 text-slate-500' : 'border-slate-200 text-slate-400'
           }`}>
             Clinical Decision Support System
