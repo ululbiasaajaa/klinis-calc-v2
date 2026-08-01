@@ -8,8 +8,8 @@ export default function AiAssistantWidget({ currentInputs, activeTab }) {
   const { lang } = useLanguage();
   const isDark = theme === 'dark';
 
-  // MENAMBUNG KONEKSI LANGSUNG KE SINGLE SOURCE OF TRUTH (STORE V3)
-  const { patient, vitals, ventilator, medications, getClinicalContext } = usePatientStore();
+  // Koneksi ke Single Source of Truth (Store Pasien v3)
+  const { patient, medications, getClinicalContext } = usePatientStore();
   const computedContext = getClinicalContext();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -17,8 +17,8 @@ export default function AiAssistantWidget({ currentInputs, activeTab }) {
     {
       sender: 'ai',
       text: lang === 'id' 
-        ? 'Halo, Dok/Farmasis! Saya Clinical AI Assistant (Enterprise v3 Engine). Saya terhubung langsung dengan Patient Store & Parameter Layar secara real-time. Ada yang bisa dibantu?' 
-        : 'Hello, Doctor/Pharmacist! I am your Enterprise v3 Clinical AI Assistant connected directly to live Patient Store data.'
+        ? 'Halo, Dok! Saya Clinical AI Assistant v3. Saya siap mendampingi analisis parameter klinis, perhitungan dosis, maupun diskusi kasus secara real-time. Ada yang bisa didiskusikan?' 
+        : 'Hello, Doctor! I am your Clinical AI Assistant v3. Ready to help analyze clinical parameters and cases.'
     }
   ]);
   const [inputVal, setInputVal] = useState('');
@@ -29,98 +29,87 @@ export default function AiAssistantWidget({ currentInputs, activeTab }) {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isOpen, isLoading]);
 
+  // Mapping nama modul agar lebih human-readable
+  const activeModuleNames = {
+    dashboard: 'Dashboard Analitik',
+    pk: 'Farmakokinetik (Loading & Maintenance)',
+    drip: 'Dosis Drip / Syringe Pump',
+    abx_dose: 'Penyesuaian Dosis Antibiotik (ClCr)',
+    peds_geri: 'Pediatrik & Geriatri',
+    stopp_start: 'Screening Geriatri STOPP/START',
+    crrt: 'Dosis ICU & CRRT',
+    framingham: 'Risiko Jantung (Framingham 10-Yr)',
+    gcs: 'Neurologi IGD (GCS & Kesadaran)',
+    triage: 'Australasian Triage Scale (Triase)',
+    fluid: 'Terapi Cairan & Luka Bakar (Parkland)',
+    electro: 'Koreksi Elektrolit Darurat',
+    ards: 'Evaluasi ARDS & AGD',
+    pregnancy: 'Usia Kehamilan & HPL',
+    renal_dose: 'Auto-Checker Dosis Ginjal',
+    label_print: 'Cetak Etiket & Resep Obat',
+    hd_dose: 'Dosis Pasien Cuci Darah (HD)',
+    hepar: 'Evaluasi Hepar (Child-Pugh & MELD)',
+    diabetes: 'Manajemen Diabetes & Insulin',
+    steroid: 'Konversi Dosis Steroid',
+    nti: 'Obat Terapi Sempit (NTI / TDM)',
+    tdm_chart: 'Grafik Trend Monitoring TDM',
+    ddi: 'Cek Interaksi Obat (DDI High-Risk)',
+    renal: 'Fungsi Ginjal (ClCr & eGFR)',
+    anthro: 'Antropometri (BSA, BMI)',
+    kalori: 'Kalori Harian & Diet Plan'
+  };
+
   const handleSendMessage = (textToSend) => {
     const query = textToSend || inputVal.trim();
     if (!query) return;
 
-    const newMessages = [...messages, { sender: 'user', text: query }];
-    setMessages(newMessages);
+    // Simpan pesan user ke history chat
+    const updatedMessages = [...messages, { sender: 'user', text: query }];
+    setMessages(updatedMessages);
     if (!textToSend) setInputVal('');
     setIsLoading(true);
 
+    // Simulasi proses berpikir AI yang natural dengan mempertimbangkan Konteks Pasien & Chat History
     setTimeout(() => {
-      let reply = lang === 'id'
-        ? 'Maaf, untuk pertanyaan klinis yang lebih spesifik, pastikan selalu merujuk pada pedoman rumah sakit dan keputusan DPJP ya.'
-        : 'I apologize, for specific clinical queries, always refer to institutional guidelines.';
-
-      const lower = query.toLowerCase();
-
-      // MAPPING MODUL AKTIFF
-      const activeModuleNames = {
-        dashboard: 'Dashboard Analitik',
-        pk: 'Farmakokinetik (Loading & Maintenance)',
-        drip: 'Dosis Drip / Syringe Pump',
-        abx_dose: 'Penyesuaian Dosis Antibiotik (ClCr)',
-        peds_geri: 'Pediatrik & Geriatri',
-        stopp_start: 'Screening Geriatri STOPP/START',
-        crrt: 'Dosis ICU & CRRT',
-        framingham: 'Risiko Jantung (Framingham 10-Yr)',
-        gcs: 'Neurologi IGD (GCS & Kesadaran)',
-        triage: 'Triase IGD (Australasian Triage Scale)',
-        fluid: 'Terapi Cairan & Luka Bakar (Parkland)',
-        electro: 'Koreksi Elektrolit Darurat (IGD)',
-        ards: 'Evaluasi ARDS & AGD (ICU)',
-        pregnancy: 'Usia Kehamilan & HPL (Obgin)',
-        renal_dose: 'Auto-Checker Dosis Ginjal',
-        label_print: 'Cetak Etiket & Resep Obat',
-        hd_dose: 'Dosis Pasien Cuci Darah (HD)',
-        hepar: 'Evaluasi Hepar (Child-Pugh & MELD)',
-        diabetes: 'Manajemen Diabetes & Insulin',
-        steroid: 'Konversi Dosis Steroid',
-        nti: 'Obat Terapi Sempit (NTI / TDM)',
-        tdm_chart: 'Grafik Trend Monitoring TDM',
-        ddi: 'Cek Interaksi Obat (DDI High-Risk)',
-        renal: 'Fungsi Ginjal (ClCr & eGFR)',
-        anthro: 'Antropometri (BSA, BMI, Parkland)',
-        kalori: 'Kalori Harian & Diet Plan'
-      };
-
       const moduleName = activeModuleNames[activeTab] || activeTab;
-      const inputsString = JSON.stringify(currentInputs || {});
       const patientName = patient.patientName || 'Tanpa Nama';
       const patientId = patient.patientId || '-';
+      const egfrVal = computedContext.egfr || '-';
+      const clcrVal = computedContext.clcr || '-';
+      const lowerQuery = query.toLowerCase();
 
-      // 1. ANALISIS PARAMETER & STORE PASIEN V3
-      if (lower.includes('analisis parameter data saat ini') || lower.includes('analisis') || lower.includes('hitung')) {
+      let reply = '';
+
+      // Logika pemahaman kontekstual yang lebih luwes & mengalir
+      if (lowerQuery.includes('analisis') || lowerQuery.includes('data') || lowerQuery.includes('pasien')) {
         reply = lang === 'id'
-          ? `📊 **Analisis Live Context Pasien (Enterprise v3):**\n- **Pasien:** ${patientName} (RM: ${patientId})\n- **Demografi:** ${patient.gender || '-'}, ${patient.age || '-'} thn | BB: ${patient.weightKg || '-'} kg, TB: ${patient.heightCm || '-'} cm\n- **Diagnosis:** ${patient.primaryDiagnosis || 'Belum diisi'}\n- **Fungsi Ginjal Auto:** eGFR ${computedContext.egfr || '-'} | ClCr ${computedContext.clcr || '-'} mL/min\n- **Modul Aktif:** ${moduleName}\n- **Input Form Layar:** ${inputsString}\n\n💡 *Rekomendasi AI:* Data pasien tersinkronisasi otomatis. Pastikan nilai lab terbaru (seperti SCr) telah diperbarui di Patient Context Bar atas.`
-          : `📊 **Live Patient Context Analysis:** Patient: ${patientName} (RM: ${patientId}), eGFR: ${computedContext.egfr}, Module: ${moduleName}.`;
+          ? `📊 **Ringkasan Analisis Live Pasien:**\n- **Nama / RM:** ${patientName} (${patientId})\n- **Demografi:** ${patient.gender || 'L/P'}, ${patient.age || '-'} thn | BB: ${patient.weightKg || '-'} kg\n- **Fungsi Ginjal:** eGFR ${egfrVal} | ClCr ${clcrVal} mL/min\n- **Modul Aktif:** ${moduleName}\n\n💡 *Catatan AI:* Seluruh parameter di atas sudah otomatis disinkronkan dari Store. Silakan tanyakan hal spesifik terkait penyesuaian dosis atau evaluasi klinisnya!`
+          : `📊 Live summary for ${patientName}: eGFR ${egfrVal}, Module: ${moduleName}.`;
       } 
-      // 2. CEK SAFETY ALERT
-      else if (lower.includes('safety alert') || lower.includes('peringatan') || lower.includes('efek samping')) {
-        const isRenalImpaired = computedContext.egfr > 0 && computedContext.egfr < 60;
+      else if (lowerQuery.includes('dosis') || lowerQuery.includes('obat') || lowerQuery.includes('antibiotik') || lowerQuery.includes('renalis')) {
+        const isRenalRisk = egfrVal !== '-' && Number(egfrVal) < 60;
         reply = lang === 'id'
-          ? `⚠️ **Clinical Safety Alert [${moduleName}]:**\n- **Status Pasien:** ${patientName} (RM: ${patientId})\n- **Evaluasi Ginjal:** ${isRenalImpaired ? `🚨 eGFR Rendah (${computedContext.egfr} mL/min) - Perlunya penyesuaian dosis obat renal!` : 'eGFR dalam batas normal/cukup.'}\n- **Obat Aktif Disimpan:** ${medications.length > 0 ? medications.map(m => m.name).join(', ') : 'Belum ada obat terdaftar'}\n- **Input Layar:** ${inputsString}`
-          : `⚠️ Safety alert generated for ${patientName} on module: ${moduleName}`;
-      } 
-      // 3. GENERATE DRAFT SOAP
-      else if (lower.includes('soap') || lower.includes('ringkasan')) {
-        reply = lang === 'id'
-          ? `📋 **Draft SOAP Clinical Suite v3 (${patientName} - RM: ${patientId}):**\n- **S (Subjective):** Pasien ${patient.gender || ''}, usia ${patient.age || '-'} tahun. Diagnosis: ${patient.primaryDiagnosis || '-'}.\n- **O (Objective):** BB: ${patient.weightKg || '-'} kg | SCr: ${patient.serumCreatinine || '-'} mg/dL | eGFR: ${computedContext.egfr || '-'} mL/min | ClCr: ${computedContext.clcr || '-'} mL/min.\n  • Evaluasi Modul ${moduleName}: ${inputsString}\n- **A (Assessment):** Monitoring terapi dan penyesuaian dosis berbasis fungsi organ.\n- **P (Plan):** Lanjutkan pemantauan berkala dan evaluasi ulang jika ada perubahan lab.`
-          : `📋 **SOAP Draft Generated** for patient ${patientName}.`;
-      } 
-      // 4. DETEKSI UMUM
-      else if (lower.includes('aman') || lower.includes('sesuai') || lower.includes('gimana') || lower.includes('bagaimana')) {
-        reply = lang === 'id'
-          ? `🤖 Berdasarkan data terpadu pasien **${patientName}** (eGFR: ${computedContext.egfr || '-'}, ClCr: ${computedContext.clcr || '-'} mL/min) pada modul **${moduleName}**:\n\nSistem mengonfirmasi parameter telah terhubung. Pastikan seluruh variabel tanda vital dan lab riil sudah sesuai dengan rekam medis!`
-          : `🤖 Analyzing inputs for ${patientName} on ${moduleName}. Please verify with clinical conditions.`;
+          ? `💊 **Evaluasi Farmakoterapi & Ginjal [${moduleName}]:**\nBerdasarkan data pasien **${patientName}** dengan nilai eGFR **${egfrVal} mL/min**:\n${isRenalRisk ? '🚨 *Perhatian:* Nilai eGFR < 60 mL/min terdeteksi. Pastikan melakukan penyesuaian dosis (*renal dose adjustment*) untuk obat-obatan yang diekskresi melalui ginjal guna menghindari akumulasi toksik.' : '✅ Fungsi ginjal relatif aman, namun tetap perhatikan parameter lab berkala.'}\n\nAda obat spesifik yang ingin dihitung dosisnya di modul ini, Dok?`
+          : `💊 Pharmacotherapy review for ${patientName}: eGFR is ${egfrVal}.`;
       }
-      // 5. SMALL TALK
-      else if (lower.includes('hahaha') || lower.includes('wkwk') || lower.includes('oke') || lower.includes('siap') || lower.includes('terima kasih') || lower.includes('makasih')) {
+      else if (lowerQuery.includes('terima kasih') || lowerQuery.includes('makasih') || lowerQuery.includes('thanks') || lowerQuery.includes('oke') || lowerQuery.includes('siap')) {
         reply = lang === 'id'
-          ? 'Siap, Komandan! Seluruh data pasien sudah tersimpan di Shared Context v3. Ada yang mau dianalisis lagi? 😎'
-          : 'Alright! Let me know if you need any other clinical calculations or data analysis!';
+          ? 'Sama-sama, Dok! Senang bisa membantu. Kabari lagi ya kalau ada parameter atau perhitungan kasus klinis lain yang perlu dicek. Semangat bertugas! 🩺✨'
+          : 'You are welcome, Doctor! Let me know if you need anything else.';
       }
-      // 6. SAPAAN
-      else if (lower.includes('halo') || lower.includes('hai') || lower.includes('hi')) {
+      else {
+        // Respon natural asisten klinis interaktif
         reply = lang === 'id'
-          ? `Halo! Saya memantau data pasien **${patientName}** di modul **${moduleName}**. Ada yang bisa saya bantu?`
-          : `Hello! Monitoring active data for ${patientName} on ${moduleName}. How can I help you?`;
+          ? `🤖 Baik Dok, terkait *"Pesan Anda"*, saya mencatat bahwa saat ini kita sedang berada di modul **${moduleName}** untuk pasien **${patientName}** (eGFR: ${egfrVal} mL/min).\n\nSebagai asisten klinis, saran saya pastikan variabel input dan data penunjang (seperti SCr atau TTV) sudah diinput akurat pada form di layar. Apakah ada detail klinis spesifik yang ingin kita bedah bersama?`
+          : `🤖 Noted regarding your query on ${moduleName} for ${patientName}. How would you like to proceed?`;
+        
+        // Memodifikasi sedikit balasan agar menyertakan esensi pertanyaan user secara natural
+        reply = reply.replace('"Pesan Anda"', `"${query}"`);
       }
 
       setMessages((prev) => [...prev, { sender: 'ai', text: reply }]);
       setIsLoading(false);
-    }, 400);
+    }, 600);
   };
 
   return (
@@ -129,7 +118,7 @@ export default function AiAssistantWidget({ currentInputs, activeTab }) {
         <button
           onClick={() => setIsOpen(true)}
           className="bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-full shadow-2xl transition-all flex items-center justify-center gap-2 group hover:scale-105 cursor-pointer"
-          title="Clinical AI Assistant (Enterprise v3)"
+          title="Clinical AI Assistant v3"
         >
           <span className="text-xl">🤖</span>
           <span className="text-xs font-bold pr-1 hidden sm:inline">Clinical AI v3</span>
@@ -141,6 +130,7 @@ export default function AiAssistantWidget({ currentInputs, activeTab }) {
           isDark ? 'bg-slate-900 border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
         }`}>
           
+          {/* Header */}
           <div className={`p-4 border-b flex justify-between items-center ${
             isDark ? 'bg-slate-950 border-slate-800' : 'bg-blue-600 text-white'
           }`}>
@@ -148,7 +138,7 @@ export default function AiAssistantWidget({ currentInputs, activeTab }) {
               <span className="text-xl">🤖</span>
               <div>
                 <h3 className="font-bold text-xs">Clinical AI Assistant</h3>
-                <span className="text-[9px] opacity-80 block">🧠 Enterprise v3 • Shared Store Sync</span>
+                <span className="text-[9px] opacity-80 block">🧠 Enterprise v3 • Real-time Store Context</span>
               </div>
             </div>
 
@@ -160,28 +150,23 @@ export default function AiAssistantWidget({ currentInputs, activeTab }) {
             </button>
           </div>
 
-          {/* CHIPS QUICK ACTION SMART CONTEXT */}
+          {/* Quick Chips */}
           <div className={`px-3 py-2 border-b flex gap-1.5 overflow-x-auto text-[10px] whitespace-nowrap ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
             <button 
-              onClick={() => handleSendMessage("Analisis parameter data saat ini")}
+              onClick={() => handleSendMessage("Tolong analisis data pasien saat ini")}
               className={`px-2 py-1 rounded-md border transition-all cursor-pointer ${isDark ? 'bg-slate-800 border-slate-700 text-blue-400 hover:bg-slate-700' : 'bg-white border-slate-300 text-blue-600 hover:bg-blue-50'}`}
             >
-              🔍 Analisis Pasien & Layar
+              📊 Analisis Data Pasien
             </button>
             <button 
-              onClick={() => handleSendMessage("Cek safety alert")}
+              onClick={() => handleSendMessage("Bagaimana evaluasi dosis obat dan fungsi ginjalnya?")}
               className={`px-2 py-1 rounded-md border transition-all cursor-pointer ${isDark ? 'bg-slate-800 border-slate-700 text-amber-400 hover:bg-slate-700' : 'bg-white border-slate-300 text-amber-600 hover:bg-amber-50'}`}
             >
-              ⚠️ Cek Safety Alert
-            </button>
-            <button 
-              onClick={() => handleSendMessage("Ringkasan SOAP")}
-              className={`px-2 py-1 rounded-md border transition-all cursor-pointer ${isDark ? 'bg-slate-800 border-slate-700 text-emerald-400 hover:bg-slate-700' : 'bg-white border-slate-300 text-emerald-600 hover:bg-emerald-50'}`}
-            >
-              📋 Draft SOAP v3
+              💊 Cek Dosis & Ginjal
             </button>
           </div>
 
+          {/* Chat Messages Body */}
           <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs">
             {messages.map((m, idx) => {
               const isAi = m.sender === 'ai';
@@ -202,13 +187,14 @@ export default function AiAssistantWidget({ currentInputs, activeTab }) {
             {isLoading && (
               <div className="flex justify-start">
                 <div className={`p-3 rounded-2xl rounded-bl-none text-xs animate-pulse ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
-                  🧠 Membaca Patient Store & parameter aktif...
+                  🧠 AI sedang merumuskan analisis klinis...
                 </div>
               </div>
             )}
             <div ref={chatEndRef} />
           </div>
 
+          {/* Input Footer */}
           <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className={`p-3 border-t flex gap-2 ${
             isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
           }`}>
@@ -216,7 +202,7 @@ export default function AiAssistantWidget({ currentInputs, activeTab }) {
               type="text"
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
-              placeholder={lang === 'id' ? "Tanya soal data pasien di layar..." : "Ask query about patient data..."}
+              placeholder={lang === 'id' ? "Diskusikan kasus atau tanya data klinis..." : "Discuss case or query clinical data..."}
               className={`flex-1 p-2.5 rounded-xl text-xs outline-none border ${
                 isDark ? 'bg-slate-900 border-slate-800 text-white focus:border-blue-500' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-600'
               }`}

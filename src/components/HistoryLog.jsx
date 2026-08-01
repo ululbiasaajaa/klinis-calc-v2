@@ -1,4 +1,6 @@
 import React, { useRef } from 'react';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { usePatientStore } from '../store/usePatientStore';
 
 export default function HistoryLog({ history, handleClearHistory, setHistory }) {
@@ -7,8 +9,8 @@ export default function HistoryLog({ history, handleClearHistory, setHistory }) 
   // MENGAMBIL ENCOUNTER & STATUS STORE V3
   const { activeEncounter } = usePatientStore();
 
-  // 1. EXPORT TO JSON
-  const handleExportJSON = () => {
+  // 1. EXPORT TO JSON (Native Capacitor & Web Fallback)
+  const handleExportJSON = async () => {
     if (history.length === 0) {
       alert('Belum ada riwayat kalkulasi untuk di-export!');
       return;
@@ -20,37 +22,78 @@ export default function HistoryLog({ history, handleClearHistory, setHistory }) 
       records: history
     };
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `Clinical_Suite_v3_History_${new Date().toISOString().slice(0,10)}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    const jsonString = JSON.stringify(exportPayload, null, 2);
+    const fileName = `Clinical_Suite_v3_History_${new Date().toISOString().slice(0,10)}.json`;
+
+    try {
+      // Simpan ke Cache Android lalu buka Share Sheet (bisa Simpan ke Unduhan / Drive)
+      const savedFile = await Filesystem.writeFile({
+        path: fileName,
+        data: jsonString,
+        directory: Directory.Cache,
+        encoding: 'utf8'
+      });
+
+      await Share.share({
+        title: 'Export Riwayat JSON',
+        text: 'File backup riwayat klinis Clinical Suite.',
+        url: savedFile.uri,
+        dialogTitle: 'Simpan File Backup JSON'
+      });
+    } catch (error) {
+      console.warn('Native write failed, using web download fallback:', error);
+      // Fallback untuk browser / web preview
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonString);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", fileName);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
   };
 
-  // 2. EXPORT TO CSV (EXCEL FRIENDLY)
-  const handleExportCSV = () => {
+  // 2. EXPORT TO CSV (Native Capacitor & Web Fallback)
+  const handleExportCSV = async () => {
     if (history.length === 0) {
       alert('Belum ada riwayat kalkulasi untuk di-export!');
       return;
     }
-    let csvContent = "data:text/csv;charset=utf-8,ID,Tanggal,Jam,Pasien,No RM,Kategori,Ringkasan\n";
+    let csvContent = "ID,Tanggal,Jam,Pasien,No RM,Kategori,Ringkasan\n";
     history.forEach((row) => {
       const cleanSummary = `"${(row.summary || '').replace(/"/g, '""').replace(/\n/g, ' | ')}"`;
       csvContent += `${row.id},${row.date},${row.time},"${row.patient}","${row.rm}","${row.type}",${cleanSummary}\n`;
     });
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Clinical_Suite_v3_History_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    const fileName = `Clinical_Suite_v3_History_${new Date().toISOString().slice(0,10)}.csv`;
+
+    try {
+      const savedFile = await Filesystem.writeFile({
+        path: fileName,
+        data: csvContent,
+        directory: Directory.Cache,
+        encoding: 'utf8'
+      });
+
+      await Share.share({
+        title: 'Export Riwayat CSV',
+        text: 'File spreadsheet CSV riwayat klinis.',
+        url: savedFile.uri,
+        dialogTitle: 'Simpan File CSV'
+      });
+    } catch (error) {
+      console.warn('Native CSV write failed, using web download fallback:', error);
+      const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
   };
 
-  // 3. IMPORT FROM JSON FILE
+  // 3. IMPORT FROM JSON FILE (Aman untuk Web & Mobile)
   const handleImportJSON = (e) => {
     const fileReader = new FileReader();
     if (e.target.files && e.target.files[0]) {
@@ -58,7 +101,6 @@ export default function HistoryLog({ history, handleClearHistory, setHistory }) 
       fileReader.onload = (event) => {
         try {
           const parsedData = JSON.parse(event.target.result);
-          // Dukungan format v3 wrapper maupun array biasa v2
           const records = parsedData.records || parsedData;
 
           if (Array.isArray(records)) {

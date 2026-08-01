@@ -6,7 +6,6 @@ export default function PatientContextBar({ onOpenDirectory }) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  // Memanggil store v3 dan computed clinical context
   const { patient, setPatientData, getClinicalContext, resetPatient } = usePatientStore();
   const { clcr, egfr, bmi, bsa } = getClinicalContext();
 
@@ -59,7 +58,6 @@ export default function PatientContextBar({ onOpenDirectory }) {
 
       {/* Input Fields Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-3 mb-3">
-        {/* NAMA PASIEN */}
         <div className="col-span-2 sm:col-span-1 md:col-span-1">
           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nama Pasien</label>
           <input
@@ -74,7 +72,6 @@ export default function PatientContextBar({ onOpenDirectory }) {
           />
         </div>
 
-        {/* NO. RM */}
         <div className="col-span-1 sm:col-span-1 md:col-span-1">
           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">No. RM</label>
           <input
@@ -89,7 +86,6 @@ export default function PatientContextBar({ onOpenDirectory }) {
           />
         </div>
 
-        {/* JENIS KELAMIN */}
         <div className="col-span-1 sm:col-span-1 md:col-span-1">
           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Gender</label>
           <select
@@ -105,7 +101,6 @@ export default function PatientContextBar({ onOpenDirectory }) {
           </select>
         </div>
 
-        {/* USIA */}
         <div className="col-span-1 sm:col-span-1 md:col-span-1">
           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Usia (Thn)</label>
           <input
@@ -120,7 +115,6 @@ export default function PatientContextBar({ onOpenDirectory }) {
           />
         </div>
 
-        {/* BERAT BADAN */}
         <div className="col-span-1 sm:col-span-1 md:col-span-1">
           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">BB (kg)</label>
           <input
@@ -135,7 +129,6 @@ export default function PatientContextBar({ onOpenDirectory }) {
           />
         </div>
 
-        {/* TINGGI BADAN */}
         <div className="col-span-1 sm:col-span-1 md:col-span-1">
           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">TB (cm)</label>
           <input
@@ -150,7 +143,6 @@ export default function PatientContextBar({ onOpenDirectory }) {
           />
         </div>
 
-        {/* SERUM CREATININE */}
         <div className="col-span-1 sm:col-span-1 md:col-span-1">
           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">SCr (mg/dL)</label>
           <input
@@ -181,7 +173,6 @@ export default function PatientContextBar({ onOpenDirectory }) {
           />
         </div>
 
-        {/* REAL-TIME COMPUTED PARAMETER BADGES */}
         <div className="flex items-center justify-between gap-1 text-[11px]">
           <div className="bg-blue-950/60 border border-blue-800/60 text-blue-300 px-2.5 py-1 rounded-lg text-center flex-1">
             <span className="text-[9px] text-blue-400 block font-mono uppercase">eGFR</span>

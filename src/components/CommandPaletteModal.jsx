@@ -11,6 +11,9 @@ const CALCULATORS_LIST = [
   { id: 'peds_geri', name: 'Pediatrik & Geriatri', category: 'Dosis & Obat', icon: '👶' },
   { id: 'stopp_start', name: 'Screening Geriatri (STOPP/START)', category: 'Dosis & Obat', icon: '📋' },
   { id: 'crrt', name: 'Dosis ICU & CRRT', category: 'Dosis & Obat', icon: '🌡️' },
+  { id: 'gout', name: 'Kalkulator Asam Urat & Gout', category: 'Organ & Fungsi', icon: '🧬' },
+  { id: 'lipid', name: 'Profil Lipid & Risiko Kolesterol', category: 'Organ & Fungsi', icon: '❤️' },
+  { id: 'toxicology', name: 'Toksikologi Klinis & Keracunan', category: 'Fisiologi & Cairan', icon: '🧪' },
   { id: 'framingham', name: 'Risiko Jantung (Framingham 10-Yr)', category: 'Organ & Fungsi', icon: '❤️' },
   { id: 'gcs', name: 'Neurologi IGD (GCS & Kesadaran)', category: 'Fisiologi & Cairan', icon: '🧠' },
   { id: 'triage', name: 'Triase IGD (Australasian Triage Scale)', category: 'Fisiologi & Cairan', icon: '🚑' },
@@ -80,24 +83,38 @@ export default function CommandPaletteModal({ isOpen, onClose, onSelectCalculato
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+    <div 
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/60 backdrop-blur-sm p-4 animate-fadeIn"
+      onClick={onClose} // Klik area luar modal untuk menutup di HP
+    >
       <div 
-        className={`w-full max-w-xl rounded-2xl border shadow-2xl overflow-hidden text-xs transition-all ${
+        onClick={(e) => e.stopPropagation()} // Mencegah klik di dalam kotak ikut menutup modal
+        className={`w-full max-w-xl rounded-2xl border shadow-2xl overflow-hidden text-xs transition-all relative ${
           isDark ? 'bg-slate-950 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
         }`}
       >
-        {/* INPUT PENCARIAN */}
-        <div className={`p-4 border-b flex items-center gap-3 ${isDark ? 'border-slate-800 bg-slate-900/50' : 'border-slate-200 bg-slate-50'}`}>
-          <span className="text-base">🔍</span>
-          <input
-            autoFocus
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cepat cari kalkulator (e.g. vanco, gfr, tdm, triase)..."
-            className="w-full bg-transparent outline-none text-sm font-semibold placeholder:text-slate-500"
-          />
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded border opacity-60">ESC</span>
+        {/* INPUT PENCARIAN & TOMBOL TUTUP NYATA */}
+        <div className={`p-4 border-b flex items-center justify-between gap-3 ${isDark ? 'border-slate-800 bg-slate-900/50' : 'border-slate-200 bg-slate-50'}`}>
+          <div className="flex items-center gap-3 flex-1">
+            <span className="text-base">🔍</span>
+            <input
+              autoFocus
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cepat cari kalkulator (e.g. toksikologi, keracunan, alkohol, antidot)..."
+              className="w-full bg-transparent outline-none text-sm font-semibold placeholder:text-slate-500"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono px-2 py-1 rounded border opacity-65 hidden sm:inline-block">ESC</span>
+            <button 
+              onClick={onClose}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+            >
+              ✕ Tutup
+            </button>
+          </div>
         </div>
 
         {/* DAFTAR HASIL PENCARIAN */}

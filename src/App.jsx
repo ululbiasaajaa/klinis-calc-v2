@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import html2pdf from 'html2pdf.js';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 import Sidebar from './components/Sidebar';
 import PatientContextBar from './components/PatientContextBar';
@@ -17,6 +19,7 @@ import ClinicalSafetyBanner from './components/ClinicalSafetyBanner';
 import DrugScannerModal from './components/DrugScannerModal';
 import ClinicalOutcomeTracker from './components/ClinicalOutcomeTracker';
 import CommandPaletteModal from './components/CommandPaletteModal';
+import SoapGenerator from './components/SoapGenerator';
 
 import NtiCalculator from './calculators/NtiCalculator';
 import DdiCalculator from './calculators/DdiCalculator';
@@ -38,6 +41,9 @@ import FluidCalculator from './calculators/FluidCalculator';
 import GcsCalculator from './calculators/GcsCalculator';
 import FraminghamCalculator from './calculators/FraminghamCalculator';
 import AntibioticDoseCalculator from './calculators/AntibioticDoseCalculator';
+import GoutCalculator from './calculators/GoutCalculator';
+import LipidCalculator from './calculators/LipidCalculator';
+import ToxicologyCalculator from './calculators/ToxicologyCalculator'; // <-- MODUL TOKSIKOLOGI
 
 import { useLanguage } from './context/LanguageContext';
 import { useTheme } from './context/ThemeContext';
@@ -48,7 +54,6 @@ export default function App() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  // Menggunakan store pasien global yang baru
   const { patient, setPatient } = usePatientStore();
   const patientName = patient.patientName;
   const patientId = patient.patientId;
@@ -78,7 +83,6 @@ export default function App() {
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [voiceResult, setVoiceResult] = useState('');
 
-  // PWA Install Prompt State & Listener
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
@@ -184,12 +188,16 @@ export default function App() {
 
   const menuItems = [
     { id: 'dashboard', name: 'Dashboard Analitik', category: 'Utama', icon: '📊' },
+    { id: 'soap', name: 'Automated SOAP Generator', category: 'Utama', icon: '📋' },
     { id: 'pk', name: 'Dosis PK (Farmakokinetik)', category: 'Dosis & Obat', icon: '💊' },
     { id: 'drip', name: 'Dosis Drip / Syringe Pump', category: 'Dosis & Obat', icon: '💉' },
     { id: 'abx_dose', name: 'Dosis Antibiotik (Adjusted ClCr)', category: 'Dosis & Obat', icon: '🦠' },
     { id: 'peds_geri', name: 'Pediatrik & Geriatri', category: 'Dosis & Obat', icon: '👶' },
     { id: 'stopp_start', name: 'Screening Geriatri (STOPP/START)', category: 'Dosis & Obat', icon: '📋' },
     { id: 'crrt', name: 'Dosis ICU & CRRT', category: 'Dosis & Obat', icon: '🌡️' },
+    { id: 'gout', name: 'Kalkulator Asam Urat & Gout', category: 'Organ & Fungsi', icon: '🧬' },
+    { id: 'lipid', name: 'Profil Lipid & Risiko Kolesterol', category: 'Organ & Fungsi', icon: '❤️' },
+    { id: 'toxicology', name: 'Toksikologi Klinis & Keracunan', category: 'Fisiologi & Cairan', icon: '🧪' }, // <-- DITAMBAHKAN DISINI
     { id: 'framingham', name: 'Risiko Jantung (Framingham 10-Yr)', category: 'Organ & Fungsi', icon: '❤️' },
     { id: 'gcs', name: 'Neurologi IGD (GCS & Kesadaran)', category: 'Fisiologi & Cairan', icon: '🧠' },
     { id: 'triage', name: 'Triase IGD (Australasian Triage Scale)', category: 'Fisiologi & Cairan', icon: '🚑' },
@@ -213,10 +221,14 @@ export default function App() {
 
   const formulaInfo = {
     dashboard: { title: 'Dashboard Analitik', formula: 'Statistik Sesi & Cache Lokal', guideline: 'Pusat ringkasan aktivitas klinis.' },
+    soap: { title: 'Automated SOAP Generator', formula: 'Sinkronisasi Real-time Store Pasien & Modul Aktif', guideline: 'Penyusunan catatan rekam medis terstruktur.' },
     pk: { title: 'Farmakokinetik', formula: 'LD = (C × Vd × BB) / F', guideline: 'Menentukan dosis awal dan pemeliharaan obat.' },
     drip: { title: 'Drip Infus', formula: 'Kecepatan = (Dose × BB × 60) / Konstr', guideline: 'Standar syringe pump.' },
     renal: { title: 'Fungsi Ginjal', formula: 'Cockcroft-Gault & CKD-EPI', guideline: 'Acuan penyesuaian dosis obat.' },
     abx_dose: { title: 'Dosis Antibiotik (Ginjal)', formula: 'Penyesuaian Dosis = f(ClCr Pasien)', guideline: 'Menghitung penyesuaian frekuensi/dosis antibiotik empiris untuk mencegah toksisitas.' },
+    gout: { title: 'Asam Urat & Gout', formula: 'Evaluasi Kadar Serum vs Ambang Normal (Pria ≤7.0, Wanita ≤6.0 mg/dL)', guideline: 'Manajemen hiperurisemia asimptomatik dan tatalaksana serangan gout akut.' },
+    lipid: { title: 'Profil Lipid & Kolesterol', formula: 'Rumus Friedewald: LDL = TC - HDL - (Trig / 5)', guideline: 'Analisis risiko kardiovaskular dan manajemen dislipidemia.' },
+    toxicology: { title: 'Toksikologi Klinis & Keracunan', formula: 'Anion Gap = Na - (Cl + HCO3) | Widmark BAC Formula', guideline: 'Evaluasi toksidrom IGD, anion/osmolar gap, dan panduan antidot spesifik.' },
     anthro: { title: 'Antropometri', formula: 'BSA = √(TB×BB)/3600', guideline: 'Status gizi & BSA.' },
     kalori: { title: 'Kalori & Diet', formula: 'Mifflin-St Jeor TDEE', guideline: 'Perencanaan diet harian.' },
     hepar: { title: 'Child-Pugh & MELD Score', formula: 'Akumulasi Poin Ensefalopati + Asites + Lab Nilai', guideline: 'Evaluasi sirosis & prognostik transplantasi hepar.' },
@@ -355,17 +367,30 @@ export default function App() {
   const pdfAlert = getPdfAlertMessage();
 
   const getCurrentActiveInputs = () => {
-    if (activeTab === 'pk') return pkInputs;
-    if (activeTab === 'drip') return dripInputs;
-    if (activeTab === 'renal') return renalInputs;
-    if (activeTab === 'anthro') return anthroInputs;
-    if (activeTab === 'kalori') return tdeeInputs;
-    if (activeTab === 'steroid') return steroidInputs;
-    if (activeTab === 'nti') {
-      if (ntiSubTab === 'phenytoin') return ntiPhenytoin;
-      if (ntiSubTab === 'vancomycin') return ntiVanco;
+    switch (activeTab) {
+      case 'pk': return { activeTab: 'pk', ...pkInputs };
+      case 'drip': return { activeTab: 'drip', ...dripInputs };
+      case 'renal': return { activeTab: 'renal', ...renalInputs };
+      case 'anthro': return { activeTab: 'anthro', ...anthroInputs };
+      case 'kalori': return { activeTab: 'kalori', ...tdeeInputs };
+      case 'steroid': return { activeTab: 'steroid', ...steroidInputs };
+      case 'abx_dose': return { activeTab: 'abx_dose', ...renalInputs };
+      case 'renal_dose': return { activeTab: 'renal_dose', ...renalInputs };
+      case 'hd_dose': return { activeTab: 'hd_dose', ...renalInputs };
+      case 'peds_geri': return { activeTab: 'peds_geri', age: renalInputs.age, weight: renalInputs.weight };
+      case 'stopp_start': return { activeTab: 'stopp_start', role: userRole };
+      case 'crrt': return { activeTab: 'crrt', ...renalInputs };
+      case 'gout': return { activeTab: 'gout' };
+      case 'lipid': return { activeTab: 'lipid' };
+      case 'toxicology': return { activeTab: 'toxicology' };
+      case 'framingham': return { activeTab: 'framingham', age: renalInputs.age, gender: renalInputs.gender };
+      case 'fluid': return { activeTab: 'fluid', weight: anthroInputs.weight, height: anthroInputs.height };
+      case 'diabetes': return { activeTab: 'diabetes' };
+      case 'hepar': return { activeTab: 'hepar' };
+      case 'nti': return { activeTab: 'nti', ...(ntiSubTab === 'phenytoin' ? ntiPhenytoin : ntiVanco) };
+      case 'tdm_chart': return { activeTab: 'tdm_chart', ...ntiVanco };
+      default: return { activeTab, ...pkInputs, ...renalInputs, ...anthroInputs, ...tdeeInputs };
     }
-    return { activeTab };
   };
 
   const saveToHistoryLog = (type, summary) => {
@@ -388,26 +413,57 @@ export default function App() {
     triggerToast('Ringkasan berhasil disalin ke clipboard!', 'success');
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     let calcType = activeTab.toUpperCase();
     saveToHistoryLog(`PDF Export (${calcType})`, `Pasien ${patientName || '-'}: Evaluasi ${calcType} Selesai.`);
-    triggerToast('Memproses laporan PDF...', 'info');
+    triggerToast('Memproses dokumen PDF...', 'info');
 
     const element = document.getElementById('pdf-template');
+    if (!element) return;
+    
     element.style.display = 'block';
     
     const opt = {
       margin:      0.4,
       filename:    `Laporan-Klinis-${patientName || 'Pasien'}.pdf`,
       image:       { type: 'jpeg', quality: 0.98 },
-      html2canvas:   { scale: 2 },
+      html2canvas: { scale: 2 },
       jsPDF:       { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
 
-    html2pdf().set(opt).from(element).save().then(() => {
+    try {
+      const worker = html2pdf().set(opt).from(element);
+      const pdfBase64 = await worker.output('datauristring');
+      
       element.style.display = 'none';
-      triggerToast('Laporan PDF berhasil diunduh!', 'success');
-    });
+
+      const base64Data = pdfBase64.split(',')[1];
+      const fileName = `Laporan-Klinis-${patientName || 'Pasien'}-${Date.now()}.pdf`;
+
+      const savedFile = await Filesystem.writeFile({
+        path: fileName,
+        data: base64Data,
+        directory: Directory.Documents,
+        recursive: true
+      });
+
+      triggerToast('PDF berhasil disimpan ke memori HP!', 'success');
+
+      await Share.share({
+        title: 'Laporan Klinis Pasien',
+        text: `Voici file PDF laporan klinis untuk pasien ${patientName || '-'}.`,
+        url: savedFile.uri,
+        dialogTitle: 'Simpan / Bagikan Laporan PDF'
+      });
+
+    } catch (error) {
+      console.error('Gagal unduh native PDF:', error);
+      element.style.display = 'none';
+      
+      html2pdf().set(opt).from(element).save().then(() => {
+        triggerToast('Laporan PDF berhasil diunduh!', 'success');
+      });
+    }
   };
 
   return (
@@ -425,7 +481,6 @@ export default function App() {
         />
       )}
 
-      {/* COMMAND PALETTE MODAL (CTRL + K) */}
       <CommandPaletteModal
         isOpen={isCommandOpen}
         onClose={() => setIsCommandOpen(false)}
@@ -435,7 +490,6 @@ export default function App() {
         }}
       />
 
-      {/* TOAST ALERT COMPONENT */}
       {toast.show && (
         <ToastAlert 
           message={toast.message} 
@@ -444,12 +498,10 @@ export default function App() {
         />
       )}
 
-      {/* QUICK CLINICAL NOTES WIDGET */}
       <PatientNotesWidget 
         onSaveNote={() => triggerToast('Catatan visite berhasil disimpan!', 'success')} 
       />
 
-      {/* MODAL SCANNER OBAT */}
       <DrugScannerModal
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
@@ -458,7 +510,6 @@ export default function App() {
         }}
       />
 
-      {/* MODAL DIREKTORI PASIEN LOKAL */}
       <PatientDirectoryModal
         isOpen={isPatientDirOpen}
         onClose={() => setIsPatientDirOpen(false)}
@@ -474,14 +525,12 @@ export default function App() {
         currentPatientId={patientId}
       />
 
-      {/* MODAL AUDIT TRAIL & KEAMANAN */}
       <AuditTrailModal
         isOpen={isAuditModalOpen}
         onClose={() => setIsAuditModalOpen(false)}
         userRole={userRole}
       />
 
-      {/* MODAL VOICE ASSISTANT */}
       <VoiceAssistantModal
         isOpen={isVoiceModalOpen}
         onClose={() => setIsVoiceModalOpen(false)}
@@ -491,7 +540,6 @@ export default function App() {
         }}
       />
 
-      {/* SIDEBAR NAVIGATION */}
       <Sidebar
         menuItems={menuItems}
         activeTab={activeTab}
@@ -504,7 +552,6 @@ export default function App() {
 
       <main className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full space-y-6">
         
-        {/* MOBILE HEADER DENGAN HAMBURGER & QUICK ACTIONS */}
         <div className={`md:hidden p-3 rounded-2xl flex justify-between items-center border ${
           isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
         }`}>
@@ -541,17 +588,11 @@ export default function App() {
           </div>
         </div>
 
-        {/* PATIENT CONTEXT BAR GLOBAL (Hanya 1 di paling atas) */}
-        <PatientContextBar 
-          onOpenDirectory={() => setIsPatientDirOpen(true)} 
-        />
-
         <HospitalHeader
           hospitalInfo={hospitalInfo}
           setHospitalInfo={setHospitalInfo}
         />
 
-        {/* SHORTCUTS BAR & PWA INSTALL BUTTON (DESKTOP) */}
         <div className="hidden md:flex items-center justify-end gap-2">
           {isInstallable && (
             <button
@@ -591,7 +632,6 @@ export default function App() {
           </button>
         </div>
 
-        {/* BANNER HASIL TRANSKRIP SUARA JIKA ADA */}
         {voiceResult && (
           <div className={`p-4 rounded-2xl flex items-center justify-between border ${
             isDark ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
@@ -604,10 +644,7 @@ export default function App() {
           </div>
         )}
 
-        {/* CDSS SAFETY BANNER (REAL-TIME KLINIS) */}
         <ClinicalSafetyBanner activeTab={activeTab} currentInputs={getCurrentActiveInputs()} />
-
-        {/* CLINICAL OUTCOME TRACKER (TREND LAB PASIEN) */}
         <ClinicalOutcomeTracker />
 
         <div className={`p-6 md:p-8 rounded-2xl shadow-xl border transition-colors ${
@@ -626,7 +663,7 @@ export default function App() {
               </p>
             </div>
 
-            {activeTab !== 'dashboard' && (
+            {activeTab !== 'dashboard' && activeTab !== 'soap' && (
               <div className="flex items-center gap-2">
                 <button onClick={handleResetForm} className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
                   isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300 border-slate-300'
@@ -647,6 +684,10 @@ export default function App() {
               history={history} 
               onNavigateTab={(tabId) => setActiveTab(tabId)} 
             />
+          )}
+
+          {activeTab === 'soap' && (
+            <SoapGenerator currentInputs={getCurrentActiveInputs()} activeTab={activeTab} />
           )}
 
           {activeTab === 'pk' && (
@@ -695,6 +736,9 @@ export default function App() {
           {activeTab === 'abx_dose' && <AntibioticDoseCalculator />}
           {activeTab === 'stopp_start' && <StoppStartCalculator />}
           {activeTab === 'crrt' && <CrrtDoseCalculator />}
+          {activeTab === 'gout' && <GoutCalculator onSaveHistory={(entry) => saveToHistoryLog(entry.type, entry.summary)} />}
+          {activeTab === 'lipid' && <LipidCalculator onSaveHistory={(entry) => saveToHistoryLog(entry.type, entry.summary)} />}
+          {activeTab === 'toxicology' && <ToxicologyCalculator onSaveHistory={(entry) => saveToHistoryLog(entry.type, entry.summary)} />} {/* <-- RENDER MODUL TOKSIKOLOGI */}
           {activeTab === 'framingham' && <FraminghamCalculator />}
           {activeTab === 'gcs' && <GcsCalculator />}
           {activeTab === 'triage' && <TriageCalculator />}
@@ -821,25 +865,11 @@ export default function App() {
                 <div><span className="text-[10px] font-bold text-blue-500 block mb-1">TDEE</span><span className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{dietPlan.tdee} kcal</span></div>
                 <div className="bg-emerald-500/10 border border-emerald-500/30 p-2 rounded-xl"><span className="text-[10px] font-bold text-emerald-500 block mb-1">TARGET</span><span className="text-2xl font-extrabold text-emerald-600">{dietPlan.targetCal} kcal</span></div>
               </div>
-
-              {dietPlan.targetCal > 0 && (
-                <div className={`p-4 rounded-xl space-y-3 text-xs border ${
-                  isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
-                }`}>
-                  <span className="font-bold text-blue-500 block">📊 Target Makronutrisi Harian:</span>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}><p className="text-slate-400 text-[10px]">🍗 Protein (30%)</p><p className="text-lg font-bold text-amber-500">{dietPlan.protein} g</p></div>
-                    <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}><p className="text-slate-400 text-[10px]">🍚 Karbohidrat (40%)</p><p className="text-lg font-bold text-blue-500">{dietPlan.carbs} g</p></div>
-                    <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}><p className="text-slate-400 text-[10px]">🥑 Lemak Sehat (30%)</p><p className="text-lg font-bold text-emerald-500">{dietPlan.fat} g</p></div>
-                  </div>
-                  <p className="text-slate-400 italic text-[11px] mt-2">{dietPlan.advice}</p>
-                </div>
-              )}
             </div>
           )}
 
           {/* ACTION BUTTONS */}
-          {activeTab !== 'dashboard' && (
+          {activeTab !== 'dashboard' && activeTab !== 'soap' && (
             <div className={`mt-8 border-t pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 ${
               isDark ? 'border-slate-800' : 'border-slate-200'
             }`}>

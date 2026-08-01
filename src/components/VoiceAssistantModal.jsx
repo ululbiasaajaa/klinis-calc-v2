@@ -1,79 +1,87 @@
 import React, { useState, useEffect } from 'react';
+import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { usePatientStore } from '../store/usePatientStore';
 
 export default function VoiceAssistantModal({ isOpen, onClose, onTranscriptionResult }) {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [recognition, setRecognition] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // INTEGRASI LANGSUNG KE SINGLE SOURCE OF TRUTH (STORE V3)
   const { patient, setPatientData } = usePatientStore();
 
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recog = new SpeechRecognition();
-      recog.continuous = false;
-      recog.interimResults = true;
-      recog.lang = 'id-ID'; // Bahasa Indonesia
-
-      recog.onresult = (event) => {
-        let currentText = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          currentText += event.results[i][0].transcript;
+    // Cek dan minta izin mikrofon saat modal dibuka di HP
+    const checkPermissions = async () => {
+      try {
+        const status = await SpeechRecognition.checkPermissions();
+        if (status.speechRecognition !== 'granted') {
+          await SpeechRecognition.requestPermissions();
         }
-        setTranscript(currentText);
-      };
+      } catch (err) {
+        console.error('Gagal meminta izin mic native:', err);
+      }
+    };
 
-      recog.onerror = (event) => {
-        console.error('Speech recognition error', event.error);
-        setIsListening(false);
-      };
-
-      recog.onend = () => {
-        setIsListening(false);
-      };
-
-      setRecognition(recog);
+    if (isOpen) {
+      checkPermissions();
     }
-  }, []);
+    
+    return () => {
+      if (isListening) {
+        SpeechRecognition.stop();
+      }
+    };
+  }, [isOpen]);
 
-  const startListening = () => {
+  const startListening = async () => {
     setTranscript('');
-    if (recognition) {
-      recognition.start();
+    setErrorMessage('');
+    try {
       setIsListening(true);
-    } else {
-      alert('Browser Anda tidak mendukung Web Speech API. Gunakan Google Chrome.');
-    }
-  };
+      
+      // Mulai mendengar suara secara native
+      const { matches } = await SpeechRecognition.start({
+        language: 'id-ID',
+        maxResults: 1,
+        prompt: 'Ucapkan data klinis pasien...',
+        partialResults: true,
+        popup: true, // Memunculkan dialog native bawaan Android jika didukung
+      });
 
-  const stopListening = () => {
-    if (recognition) {
-      recognition.stop();
+      if (matches && matches.length > 0) {
+        setTranscript(matches[0]);
+      }
       setIsListening(false);
+    } catch (err) {
+      console.error('Error speech recognition native:', err);
+      setIsListening(false);
+      setErrorMessage('Gagal merekam suara. Pastikan izin mikrofon diaktifkan.');
     }
   };
 
-  // SMART AUTO-PARSER PARAMETER KLINIS KE STORE V3
+  const stopListening = async () => {
+    try {
+      await SpeechRecognition.stop();
+    } catch (e) {
+      console.error(e);
+    }
+    setIsListening(false);
+  };
+
   const parseAndSyncToStore = (text) => {
     if (!text) return;
     const lower = text.toLowerCase();
     const updates = {};
 
-    // 1. Deteksi Berat Badan (e.g. "berat badan 60 kg" / "bb 65")
     const weightMatch = lower.match(/(?:berat badan|berat|bb)\s*(\d+(?:[.,]\d+)?)/);
     if (weightMatch) updates.weightKg = weightMatch[1].replace(',', '.');
 
-    // 2. Deteksi Tinggi Badan (e.g. "tinggi 170" / "tb 165 cm")
     const heightMatch = lower.match(/(?:tinggi badan|tinggi|tb)\s*(\d+(?:[.,]\d+)?)/);
     if (heightMatch) updates.heightCm = heightMatch[1].replace(',', '.');
 
-    // 3. Deteksi Serum Kreatinin (e.g. "kreatinin 1.2" / "scr 0.9")
     const scrMatch = lower.match(/(?:kreatinin|serum kreatinin|scr)\s*(\d+(?:[.,]\d+)?)/);
     if (scrMatch) updates.serumCreatinine = scrMatch[1].replace(',', '.');
 
-    // 4. Deteksi Usia (e.g. "usia 55" / "umur 40 tahun")
     const ageMatch = lower.match(/(?:usia|umur)\s*(\d+)/);
     if (ageMatch) updates.age = ageMatch[1];
 
@@ -83,9 +91,7 @@ export default function VoiceAssistantModal({ isOpen, onClose, onTranscriptionRe
   };
 
   const handleApply = () => {
-    // Parsing data klinis & sync ke store v3
     parseAndSyncToStore(transcript);
-
     if (onTranscriptionResult) {
       onTranscriptionResult(transcript);
     }
@@ -102,7 +108,7 @@ export default function VoiceAssistantModal({ isOpen, onClose, onTranscriptionRe
         <div className="flex items-center gap-3 mb-4">
           <span className="text-2xl animate-pulse">🎙️</span>
           <div>
-            <h3 className="font-bold text-base text-white">Asisten Suara Klinis (v3 Engine)</h3>
+            <h3 className="font-bold text-base text-white">Asisten Suara Klinis (Native Engine)</h3>
             <p className="text-[10px] text-slate-400">
               Pasien Aktif: <strong className="text-blue-400">{patient.patientName || 'Umum'}</strong> ({patient.patientId || 'RM: -'})
             </p>
@@ -110,15 +116,21 @@ export default function VoiceAssistantModal({ isOpen, onClose, onTranscriptionRe
         </div>
 
         <p className="text-xs text-slate-400 mb-3">
-          Ucapkan data klinis, misal: <em>"Berat badan 60 kg, kreatinin 1.2, tinggi 165 cm"</em>
+          Ucapkan data klinis, misal: <em>"Berat badan 60 kg, kreatinin 1.2"</em>
         </p>
+
+        {errorMessage && (
+          <div className="mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-400">
+            ⚠️ {errorMessage}
+          </div>
+        )}
 
         <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl min-h-[100px] mb-4 flex items-center justify-center text-center">
           {transcript ? (
             <p className="text-sm text-emerald-400 font-medium italic">"{transcript}"</p>
           ) : (
             <p className="text-xs text-slate-500">
-              {isListening ? "Mendengarkan suara Anda... Silakan bicara." : "Tekan tombol mikrofon di bawah untuk mulai merekam."}
+              {isListening ? "Mendengarkan suara Anda..." : "Tekan tombol mikrofon untuk mulai merekam."}
             </p>
           )}
         </div>

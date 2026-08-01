@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { usePatientStore } from '../store/usePatientStore';
 
@@ -7,8 +7,20 @@ export default function DashboardOverview({ history, onNavigateTab }) {
   const isDark = theme === 'dark';
 
   // AMBIL PASIEN & COMPUTED CONTEXT LANGSUNG DARI STORE V3
-  const { patient, getClinicalContext, medications } = usePatientStore();
-  const { egfr, clcr, bmi, bsa } = getClinicalContext();
+  const { patient } = usePatientStore();
+
+  // State untuk Pengaturan Kop Surat
+  const [hospitalName, setHospitalName] = useState(localStorage.getItem('hospital_name') || 'RSUD Enterprise v3');
+  const [hospitalAddress, setHospitalAddress] = useState(localStorage.getItem('hospital_address') || 'Jl. Kesehatan No. 1 Indonesia');
+  const [isSavedKop, setIsSavedKop] = useState(false);
+
+  const handleSaveKop = (e) => {
+    e.preventDefault();
+    localStorage.setItem('hospital_name', hospitalName);
+    localStorage.setItem('hospital_address', hospitalAddress);
+    setIsSavedKop(true);
+    setTimeout(() => setIsSavedKop(false), 2500);
+  };
 
   // Hitung Statistik dari History Log
   const totalCalculations = history.length;
@@ -53,52 +65,51 @@ export default function DashboardOverview({ history, onNavigateTab }) {
         </div>
       </div>
 
-      {/* KARTU RINGKASAN PASIEN AKTIF (SINGLE SOURCE OF TRUTH V3) */}
+      {/* PENGATURAN KOP SURAT LAPORAN PDF (PENGGANTI KARTU PASIEN KEMBAR) */}
       <div className={`p-5 rounded-2xl border ${
         isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
       }`}>
         <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-800/60">
           <span className="font-bold text-xs text-blue-500 flex items-center gap-1.5">
-            👤 Status Pasien Aktif Dalam Sesi
+            🏥 Pengaturan Kop Surat Laporan PDF (Instansi / RS)
           </span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
-            STORE V3 ACTIVE
-          </span>
+          {isSavedKop && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 animate-pulse">
+              ✅ Tersimpan!
+            </span>
+          )}
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-          <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-            <span className="text-[9px] text-slate-400 block mb-0.5">PASIEN / RM</span>
-            <strong className={`text-xs block truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {patient.patientName || 'Tanpa Nama'}
-            </strong>
-            <span className="text-[10px] text-slate-400 block">RM: {patient.patientId || '-'}</span>
+        <form onSubmit={handleSaveKop} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] text-slate-400 block mb-1 font-semibold">NAMA RUMAH SAKIT / INSTANSI</label>
+            <input
+              type="text"
+              value={hospitalName}
+              onChange={(e) => setHospitalName(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-xs text-white outline-none focus:border-blue-500"
+              placeholder="Contoh: RSUD Dr. Soetomo"
+            />
           </div>
-
-          <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-            <span className="text-[9px] text-slate-400 block mb-0.5">FUNGSI GINJAL (eGFR)</span>
-            <strong className={`text-base font-black ${egfr > 0 && egfr < 30 ? 'text-red-500' : 'text-emerald-500'}`}>
-              {egfr > 0 ? `${egfr} mL/min` : '-'}
-            </strong>
-            <span className="text-[10px] text-slate-400 block">ClCr: {clcr > 0 ? `${clcr} mL/min` : '-'}</span>
+          <div>
+            <label className="text-[10px] text-slate-400 block mb-1 font-semibold">ALAMAT / KONTAK INSTANSI</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={hospitalAddress}
+                onChange={(e) => setHospitalAddress(e.target.value)}
+                className="flex-1 bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-xs text-white outline-none focus:border-blue-500"
+                placeholder="Contoh: Jl. Mayjen Prof. Dr. Moestopo"
+              />
+              <button
+                type="submit"
+                className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all cursor-pointer shadow"
+              >
+                Simpan Kop
+              </button>
+            </div>
           </div>
-
-          <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-            <span className="text-[9px] text-slate-400 block mb-0.5">ANTROPOMETRI (BMI/BSA)</span>
-            <strong className={`text-xs block ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {bmi > 0 ? `${bmi} kg/m²` : '-'}
-            </strong>
-            <span className="text-[10px] text-slate-400 block">BSA: {bsa > 0 ? `${bsa} m²` : '-'}</span>
-          </div>
-
-          <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-            <span className="text-[9px] text-slate-400 block mb-0.5">REGIMEN OBAT AKTIF</span>
-            <strong className="text-xs text-indigo-400 block">
-              {medications.length} Obat Terdaftar
-            </strong>
-            <span className="text-[10px] text-slate-400 block">Monitoring DDI Active</span>
-          </div>
-        </div>
+        </form>
       </div>
 
       {/* KARTU STATISTIK UTAMA (METRICS) */}
