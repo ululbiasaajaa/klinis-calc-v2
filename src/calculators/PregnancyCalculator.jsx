@@ -18,6 +18,10 @@ export default function PregnancyCalculator() {
     return d.toISOString().split('T')[0];
   });
 
+  // State untuk Fitur Estimasi Berat Janin (Johnson)
+  const [tfu, setTfu] = useState('');
+  const [isPap, setIsPap] = useState('belum'); // 'belum' (n=11) atau 'sudah' (n=12)
+
   // Auto-sync data dari Patient Context Bar jika tersedia
   useEffect(() => {
     if (patient) {
@@ -81,19 +85,33 @@ export default function PregnancyCalculator() {
     };
   })();
 
+  // Kalkulasi Berat Janin (Johnson-Tauscher Formula)
+  const estimatedFetalWeight = (() => {
+    const tfuVal = parseFloat(tfu);
+    if (!tfuVal || tfuVal <= 0) return null;
+    const n = isPap === 'belum' ? 11 : 12;
+    const ebjGram = (tfuVal - n) * 155;
+    return Math.max(0, Math.round(ebjGram));
+  })();
+
   // HANDLER AKSI V3 DISPATCHERS
 
   const handleSaveToTracker = () => {
     if (!calculationResult || calculationResult.status !== 'success') return;
 
+    let summaryText = `HPL: ${calculationResult.edd} | Usia: ${calculationResult.weeks} mg ${calculationResult.days} hr`;
+    if (estimatedFetalWeight !== null) {
+      summaryText += ` | Estimasi Berat Janin (EBJ): ${estimatedFetalWeight} gram`;
+    }
+
     addLabRecord({
       date: new Date().toLocaleDateString('id-ID'),
-      parameter: 'Estimasi Kehamilan & HPL (Naegle)',
-      value: `HPL: ${calculationResult.edd} | Usia: ${calculationResult.weeks} mg ${calculationResult.days} hr`,
-      unit: 'Minggu Gestasi',
+      parameter: 'Estimasi Kehamilan, HPL & EBJ',
+      value: summaryText,
+      unit: 'Minggu Gestasi & Gram',
       source: `HPHT: ${hpht} (${calculationResult.trimester})`
     });
-    alert(`✅ Data Kehamilan berhasil disimpan ke Outcome Tracker Pasien!`);
+    alert(`✅ Data Kehamilan & EBJ berhasil disimpan ke Outcome Tracker Pasien!`);
   };
 
   const handleAddAncSupplements = () => {
@@ -111,7 +129,7 @@ export default function PregnancyCalculator() {
       
       {patient.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
-          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Kalkulator usia kehamilan & HPL.</span>
+          <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Kalkulator HPL & Berat Janin Terintegrasi.</span>
           <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
         </div>
       )}
@@ -119,9 +137,9 @@ export default function PregnancyCalculator() {
       <div className={`p-4 rounded-xl border ${
         isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-blue-50 border-blue-200 text-slate-700'
       }`}>
-        <p className="font-bold mb-1 text-blue-400">🤰 Kalkulator Usia Kehamilan & HPL (Naegle&apos;s Rule v3):</p>
+        <p className="font-bold mb-1 text-blue-400">🤰 Kalkulator Usia Kehamilan, HPL & Estimasi Berat Janin (Johnson v3):</p>
         <p className="leading-relaxed">
-          Digunakan di IGD, Poli Kandungan (KIA), dan Praktik Kebidanan untuk menentukan Hari Perkiraan Lahir (HPL) serta Usia Kehamilan saat ini berdasarkan HPHT (Hari Pertama Haid Terakhir).
+          Modul komprehensif Poli Kandungan (KIA) untuk menghitung Hari Perkiraan Lahir (Naegle), Usia Gestasi, serta Estimasi Berat Janin (EBJ) berdasarkan Tinggi Fundus Uteri (TFU).
         </p>
       </div>
 
@@ -171,6 +189,67 @@ export default function PregnancyCalculator() {
             </div>
           </div>
 
+          {/* FITUR ESTIMASI BERAT JANIN (JOHNSON) TERINTEGRASI */}
+          <div className={`p-5 rounded-2xl border space-y-4 ${
+            isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          }`}>
+            <div>
+              <h3 className={`font-bold text-sm mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                👶 Estimasi Berat Janin (Rumus Johnson-Tauscher)
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Masukkan Tinggi Fundus Uteri (TFU) untuk menaksir berat janin intrauterin.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Tinggi Fundus Uteri (TFU dalam cm):
+                </label>
+                <input
+                  type="number"
+                  value={tfu}
+                  onChange={(e) => setTfu(e.target.value)}
+                  placeholder="e.g. 30"
+                  className={`w-full p-3 rounded-xl border outline-none font-bold ${
+                    isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Posisi Kepala Janin Terhadap PAP (Pintu Atas Panggul):
+                </label>
+                <select
+                  value={isPap}
+                  onChange={(e) => setIsPap(e.target.value)}
+                  className={`w-full p-3 rounded-xl border outline-none font-bold ${
+                    isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
+                  }`}
+                >
+                  <option value="belum">Belum masuk PAP (n = 11)</option>
+                  <option value="sudah">Sudah masuk PAP / Masuk panggul (n = 12)</option>
+                </select>
+              </div>
+            </div>
+
+            {estimatedFetalWeight !== null && (
+              <div className={`p-4 rounded-xl border flex items-center justify-between ${
+                isDark ? 'bg-emerald-950/30 border-emerald-800/50 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              }`}>
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider font-bold block opacity-80">Hasil Estimasi Berat Janin (EBJ)</span>
+                  <span className="text-2xl font-extrabold">{estimatedFetalWeight} gram</span>
+                </div>
+                <span className="text-[11px] italic font-mono bg-emerald-900/40 px-2.5 py-1 rounded-lg">
+                  Formula: (TFU - {isPap === 'belum' ? 11 : 12}) × 155g
+                </span>
+              </div>
+            )}
+          </div>
+
           {/* AKSI SIMPAN DAN DISTRIBUSI KE STORE V3 */}
           <div className="flex flex-wrap justify-end gap-2 pt-2">
             <button
@@ -178,7 +257,7 @@ export default function PregnancyCalculator() {
               onClick={handleSaveToTracker}
               className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
             >
-              📈 Simpan Data HPL ke Outcome Tracker
+              📈 Simpan Data HPL & EBJ ke Outcome Tracker
             </button>
             <button
               type="button"

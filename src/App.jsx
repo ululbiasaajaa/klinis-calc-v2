@@ -206,7 +206,7 @@ export default function App() {
     { id: 'fluid', name: 'Terapi Cairan & Luka Bakar (Parkland)', category: 'Fisiologi & Cairan', icon: '💧' },
     { id: 'electro', name: 'Koreksi Elektrolit Darurat (IGD)', category: 'Fisiologi & Cairan', icon: '🩸' },
     { id: 'ards', name: 'Evaluasi ARDS & AGD (ICU)', category: 'Fisiologi & Cairan', icon: '🫁' },
-    { id: 'pregnancy', name: 'Usia Kehamilan & HPL (Obgin)', category: 'Organ & Fungsi', icon: '🤰' },
+    { id: 'pregnancy', name: 'Usia Kehamilan, HPL & EBJ (Obgin)', category: 'Organ & Fungsi', icon: '🤰' },
     { id: 'renal_dose', name: 'Auto-Checker Dosis Ginjal', category: 'Organ & Fungsi', icon: '🧪' },
     { id: 'label_print', name: 'Cetak Etiket & Resep Obat', category: 'Dosis & Obat', icon: '🖨️' },
     { id: 'hd_dose', name: 'Dosis Pasien Cuci Darah (HD)', category: 'Organ & Fungsi', icon: '🧪' },
@@ -227,6 +227,7 @@ export default function App() {
     pk: { title: 'Farmakokinetik', formula: 'LD = (C × Vd × BB) / F', guideline: 'Menentukan dosis awal dan pemeliharaan obat.' },
     drip: { title: 'Drip Infus', formula: 'Kecepatan = (Dose × BB × 60) / Konstr', guideline: 'Standar syringe pump.' },
     renal: { title: 'Fungsi Ginjal', formula: 'Cockcroft-Gault & CKD-EPI', guideline: 'Acuan penyesuaian dosis obat.' },
+    pregnancy: { title: 'Usia Kehamilan, HPL & EBJ', formula: 'HPL = HPHT + 7 hari - 3 bulan + 1 tahun | EBJ = (TFU - n) × 155g', guideline: 'Penilaian komprehensif obstetri dan taksiran berat janin (Johnson).' },
     abx_dose: { title: 'Dosis Antibiotik (Ginjal)', formula: 'Penyesuaian Dosis = f(ClCr Pasien)', guideline: 'Menghitung penyesuaian frekuensi/dosis antibiotik empiris untuk mencegah toksisitas.' },
     gout: { title: 'Asam Urat & Gout', formula: 'Evaluasi Kadar Serum vs Ambang Normal (Pria ≤7.0, Wanita ≤6.0 mg/dL)', guideline: 'Manajemen hiperurisemia asimptomatik dan tatalaksana serangan gout akut.' },
     lipid: { title: 'Profil Lipid & Kolesterol', formula: 'Rumus Friedewald: LDL = TC - HDL - (Trig / 5)', guideline: 'Analisis risiko kardiovaskular dan manajemen dislipidemia.' },
@@ -389,6 +390,7 @@ export default function App() {
       case 'fluid': return { activeTab: 'fluid', weight: anthroInputs.weight, height: anthroInputs.height };
       case 'diabetes': return { activeTab: 'diabetes' };
       case 'hepar': return { activeTab: 'hepar' };
+      case 'pregnancy': return { activeTab: 'pregnancy' };
       case 'nti': return { activeTab: 'nti', ...(ntiSubTab === 'phenytoin' ? ntiPhenytoin : ntiVanco) };
       case 'tdm_chart': return { activeTab: 'tdm_chart', ...ntiVanco };
       default: return { activeTab, ...pkInputs, ...renalInputs, ...anthroInputs, ...tdeeInputs };
@@ -453,7 +455,7 @@ export default function App() {
 
       await Share.share({
         title: 'Laporan Klinis Pasien',
-        text: `Voici file PDF laporan klinis untuk pasien ${patientName || '-'}.`,
+        text: `Berikut file PDF laporan klinis untuk pasien ${patientName || '-'}.`,
         url: savedFile.uri,
         dialogTitle: 'Simpan / Bagikan Laporan PDF'
       });
@@ -469,7 +471,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col md:flex-row font-sans transition-colors duration-300 ${
+    <div className={`min-h-screen w-full flex font-sans transition-colors duration-300 relative overflow-x-hidden ${
       isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-800'
     }`}>
       
@@ -544,6 +546,7 @@ export default function App() {
 
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
 
+      {/* SIDEBAR MELAYANG */}
       <Sidebar
         menuItems={menuItems}
         activeTab={activeTab}
@@ -555,354 +558,361 @@ export default function App() {
         onOpenAbout={() => setShowAbout(true)}
       />
 
-      <main className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full space-y-6">
-        
-        <div className={`md:hidden p-3 rounded-2xl flex justify-between items-center border ${
-          isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
-        }`}>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🩺</span>
-            <div>
-              <span className="font-bold text-sm text-blue-500 block leading-tight">Clinical Suite</span>
-              <span className="text-[9px] text-slate-400">Role: {userRole || 'Professional'}</span>
+      {/* KONTEN UTAMA */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+        <main className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full space-y-6">
+          
+          <div className={`p-3 rounded-2xl flex justify-between items-center border ${
+            isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+          }`}>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🩺</span>
+              <div>
+                <span className="font-bold text-sm text-blue-500 block leading-tight">Clinical Suite</span>
+                <span className="text-[9px] text-slate-400">Role: {userRole || 'Professional'}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {isInstallable && (
+                <button onClick={handleInstallClick} className="p-2 rounded-xl bg-blue-600 text-white text-xs font-bold" title="Install Aplikasi">
+                  📥
+                </button>
+              )}
+              <button onClick={() => setIsCommandOpen(true)} className="p-2 rounded-xl bg-indigo-600 text-white text-xs font-bold" title="Cari Cepat (Ctrl+K)">
+                🔍
+              </button>
+              <button onClick={() => setIsScannerOpen(true)} className="p-2 rounded-xl bg-emerald-600 text-white text-xs font-bold" title="Scanner Obat">
+                📸
+              </button>
+              <button onClick={() => setIsVoiceModalOpen(true)} className="p-2 rounded-xl bg-teal-600 text-white text-xs font-bold" title="Asisten Suara Klinis">
+                🎙️
+              </button>
+              <button onClick={() => setIsPatientDirOpen(true)} className="p-2 rounded-xl bg-blue-600 text-white text-xs font-bold" title="Direktori Pasien">
+                📁
+              </button>
+              <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-2 rounded-xl font-bold cursor-pointer ${
+                isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
+              }`}>
+                ☰
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
+
+          <PatientContextBar 
+            onOpenDirectory={() => setIsPatientDirOpen(true)} 
+          />
+
+          <HospitalHeader
+            hospitalInfo={hospitalInfo}
+            setHospitalInfo={setHospitalInfo}
+          />
+
+          <div className="hidden md:flex items-center justify-end gap-2">
             {isInstallable && (
-              <button onClick={handleInstallClick} className="p-2 rounded-xl bg-blue-600 text-white text-xs font-bold" title="Install Aplikasi">
-                📥
+              <button
+                onClick={handleInstallClick}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer animate-pulse"
+                title="Install Aplikasi Klinis"
+              >
+                <span>📥💻</span> Install App
               </button>
             )}
-            <button onClick={() => setIsCommandOpen(true)} className="p-2 rounded-xl bg-indigo-600 text-white text-xs font-bold" title="Cari Cepat (Ctrl+K)">
-              🔍
-            </button>
-            <button onClick={() => setIsScannerOpen(true)} className="p-2 rounded-xl bg-emerald-600 text-white text-xs font-bold" title="Scanner Obat">
-              📸
-            </button>
-            <button onClick={() => setIsVoiceModalOpen(true)} className="p-2 rounded-xl bg-teal-600 text-white text-xs font-bold" title="Asisten Suara Klinis">
-              🎙️
-            </button>
-            <button onClick={() => setIsPatientDirOpen(true)} className="p-2 rounded-xl bg-blue-600 text-white text-xs font-bold" title="Direktori Pasien">
-              📁
-            </button>
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-2 rounded-xl font-bold ${
-              isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
-            }`}>
-              {isSidebarOpen ? '✖' : '☰'}
-            </button>
-          </div>
-        </div>
-
-        <HospitalHeader
-          hospitalInfo={hospitalInfo}
-          setHospitalInfo={setHospitalInfo}
-        />
-
-        <div className="hidden md:flex items-center justify-end gap-2">
-          {isInstallable && (
             <button
-              onClick={handleInstallClick}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer animate-pulse"
-              title="Install Aplikasi Klinis"
+              onClick={() => setIsCommandOpen(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer"
+              title="Cari Cepat (Ctrl + K)"
             >
-              <span>📥💻</span> Install App
+              <span>🔍</span> Cari Modul (Ctrl+K)
             </button>
-          )}
-          <button
-            onClick={() => setIsCommandOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer"
-            title="Cari Cepat (Ctrl + K)"
-          >
-            <span>🔍</span> Cari Modul (Ctrl+K)
-          </button>
-          <button
-            onClick={() => setIsScannerOpen(true)}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer"
-          >
-            <span>📸</span> Scan Obat
-          </button>
-          <button
-            onClick={() => setIsVoiceModalOpen(true)}
-            className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer"
-          >
-            <span>🎙️</span> Voice Notes
-          </button>
-          <button
-            onClick={() => setIsAuditModalOpen(true)}
-            className={`flex items-center gap-2 font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap border cursor-pointer ${
-              isDark ? 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
-            }`}
-          >
-            <span>🔒</span> Keamanan ({userRole})
-          </button>
-        </div>
-
-        {voiceResult && (
-          <div className={`p-4 rounded-2xl flex items-center justify-between border ${
-            isDark ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-          }`}>
-            <div className="text-xs">
-              <span className="font-bold block mb-1">🎙️ Transkrip Suara Terakhir:</span>
-              <p className="italic">"{voiceResult}"</p>
-            </div>
-            <button onClick={() => setVoiceResult('')} className="text-xs font-bold px-3 py-1.5 bg-emerald-600 text-white rounded-xl">Tutup</button>
-          </div>
-        )}
-
-        <ClinicalSafetyBanner activeTab={activeTab} currentInputs={getCurrentActiveInputs()} />
-        <ClinicalOutcomeTracker />
-
-        <div className={`p-6 md:p-8 rounded-2xl shadow-xl border transition-colors ${
-          isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-slate-200/50'
-        }`}>
-          <div className={`mb-6 border-b pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3 ${
-            isDark ? 'border-slate-800' : 'border-slate-200'
-          }`}>
-            <div>
-              <h2 className={`text-xl font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                <span>{menuItems.find((m) => m.id === activeTab)?.icon}</span>
-                {menuItems.find((m) => m.id === activeTab)?.name}
-              </h2>
-              <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Kategori: {menuItems.find((m) => m.id === activeTab)?.category} • Sesi Aktif: <span className="text-blue-500 font-bold">{userRole}</span>
-              </p>
-            </div>
-
-            {activeTab !== 'dashboard' && activeTab !== 'soap' && (
-              <div className="flex items-center gap-2">
-                <button onClick={handleResetForm} className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
-                  isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300 border-slate-300'
-                }`}>
-                  {t.resetBtn}
-                </button>
-                <button onClick={() => setShowInfo(true)} className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
-                  isDark ? 'bg-blue-950/60 text-blue-400 border-blue-800 hover:bg-blue-900/60' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
-                }`}>
-                  {t.infoBtn}
-                </button>
-              </div>
-            )}
+            <button
+              onClick={() => setIsScannerOpen(true)}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer"
+            >
+              <span>📸</span> Scan Obat
+            </button>
+            <button
+              onClick={() => setIsVoiceModalOpen(true)}
+              className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap cursor-pointer"
+            >
+              <span>🎙️</span> Voice Notes
+            </button>
+            <button
+              onClick={() => setIsAuditModalOpen(true)}
+              className={`flex items-center gap-2 font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs whitespace-nowrap border cursor-pointer ${
+                isDark ? 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+              }`}
+            >
+              <span>🔒</span> Keamanan ({userRole})
+            </button>
           </div>
 
-          {activeTab === 'dashboard' && (
-            <DashboardOverview 
-              history={history} 
-              onNavigateTab={(tabId) => setActiveTab(tabId)} 
-            />
-          )}
-
-          {activeTab === 'soap' && (
-            <SoapGenerator currentInputs={getCurrentActiveInputs()} activeTab={activeTab} />
-          )}
-
-          {activeTab === 'pk' && (
-            <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Target Conc (mg/L)</label><input type="number" name="targetConc" value={pkInputs.targetConc} onChange={handlePk} placeholder="e.g. 15" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Vd (L/kg)</label><input type="number" name="vd" value={pkInputs.vd} onChange={handlePk} placeholder="e.g. 0.7" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={pkInputs.weight} onChange={handlePk} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Clearance (L/jam)</label><input type="number" name="clearance" value={pkInputs.clearance} onChange={handlePk} placeholder="e.g. 3.0" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Interval (Jam)</label><input type="number" name="interval" value={pkInputs.interval} onChange={handlePk} placeholder="e.g. 8" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+          {voiceResult && (
+            <div className={`p-4 rounded-2xl flex items-center justify-between border ${
+              isDark ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            }`}>
+              <div className="text-xs">
+                <span className="font-bold block mb-1">🎙️ Transkrip Suara Terakhir:</span>
+                <p className="italic">"{voiceResult}"</p>
               </div>
-
-              <div className={`p-4 rounded-xl flex justify-between mb-4 border ${
-                isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
-              }`}>
-                <div><span className="text-xs text-blue-500 font-bold block">Loading Dose (LD)</span><span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ld} mg</span></div>
-                <div><span className="text-xs text-blue-500 font-bold block">Maintenance Dose (MD)</span><span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{md} mg/{pkInputs.interval || 0}j</span></div>
-              </div>
+              <button onClick={() => setVoiceResult('')} className="text-xs font-bold px-3 py-1.5 bg-emerald-600 text-white rounded-xl">Tutup</button>
             </div>
           )}
 
-          {activeTab === 'drip' && (
-            <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Dosis Target (mcg/kg/min)</label><input type="number" name="dose" value={dripInputs.dose} onChange={handleDrip} placeholder="e.g. 5" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={dripInputs.weight} onChange={handleDrip} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jumlah Obat Dalam Vial/Ampul (mg)</label><input type="number" name="drugMg" value={dripInputs.drugMg} onChange={handleDrip} placeholder="e.g. 250" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Volume Pelarut Syringe Pump (mL)</label><input type="number" name="volumeMl" value={dripInputs.volumeMl} onChange={handleDrip} placeholder="e.g. 50" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-              </div>
+          <ClinicalSafetyBanner activeTab={activeTab} currentInputs={getCurrentActiveInputs()} />
+          <ClinicalOutcomeTracker />
 
-              <div className={`p-4 rounded-xl text-center mb-4 border ${
-                isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
-              }`}>
-                <span className="text-xs text-blue-500 font-bold block">Kecepatan Syringe Pump / Infusiometer</span>
-                <span className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{drip} mL/jam</span>
-              </div>
-              {drip > 50 && (
-                <div className="bg-amber-500/10 border border-amber-500/40 p-3 rounded-xl text-amber-600 font-medium text-xs">
-                  ⚠️ <strong>WARNING:</strong> Kecepatan Drip Tinggi ({drip} mL/jam). Pertimbangkan Vena Sentral (CVC)!
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'peds_geri' && <PedsGeriCalculator />}
-          {activeTab === 'abx_dose' && <AntibioticDoseCalculator />}
-          {activeTab === 'stopp_start' && <StoppStartCalculator />}
-          {activeTab === 'crrt' && <CrrtDoseCalculator />}
-          {activeTab === 'gout' && <GoutCalculator onSaveHistory={(entry) => saveToHistoryLog(entry.type, entry.summary)} />}
-          {activeTab === 'lipid' && <LipidCalculator onSaveHistory={(entry) => saveToHistoryLog(entry.type, entry.summary)} />}
-          {activeTab === 'toxicology' && <ToxicologyCalculator onSaveHistory={(entry) => saveToHistoryLog(entry.type, entry.summary)} />}
-          {activeTab === 'framingham' && <FraminghamCalculator />}
-          {activeTab === 'gcs' && <GcsCalculator />}
-          {activeTab === 'triage' && <TriageCalculator />}
-          {activeTab === 'fluid' && <FluidCalculator />}
-          {activeTab === 'electro' && <ElectrolyteCorrectionCalculator />}
-          {activeTab === 'ards' && <ArdsCalculator />}
-          {activeTab === 'pregnancy' && <PregnancyCalculator />}
-          {activeTab === 'renal_dose' && <RenalDosingChecker />}
-          {activeTab === 'label_print' && <PrescriptionEtiquetteCalculator />}
-          {activeTab === 'hd_dose' && <HemodialysisDoseCalculator />}
-          
-          {activeTab === 'hepar' && <ChildPughCalculator />}
-          {activeTab === 'diabetes' && <DiabetesCalculator />}
-
-          {activeTab === 'steroid' && (
-            <SteroidConversionCalculator 
-              inputs={steroidInputs}
-              setInputs={setSteroidInputs}
-            />
-          )}
-
-          {activeTab === 'nti' && (
-            <NtiCalculator
-              ntiSubTab={ntiSubTab}
-              setNtiSubTab={setNtiSubTab}
-              ntiPhenytoin={ntiPhenytoin}
-              setNtiPhenytoin={setNtiPhenytoin}
-              phenytoinAdj={phenytoinAdj}
-              ntiVanco={ntiVanco}
-              setNtiVanco={setNtiVanco}
-              vancoAuc={vancoAuc}
-              ntiTheo={ntiTheo}
-              setNtiTheo={setNtiTheo}
-              theoDoseRec={0}
-              ntiWarfarin={ntiWarfarin}
-              setNtiWarfarin={setNtiWarfarin}
-              warfarinRec={{ status: 'Stable', action: 'Lanjutkan regimen' }}
-              ntiAmino={ntiAmino}
-              setNtiAmino={setNtiAmino}
-              aminoDose={{ ibw: 55, doseMg: 400, dosingWeight: 'IBW', interval: '24 jam' }}
-            />
-          )}
-
-          {activeTab === 'tdm_chart' && <TdmChartCalculator />}
-          {activeTab === 'ddi' && <DdiCalculator />}
-
-          {activeTab === 'renal' && (
-            <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Usia (Tahun)</label><input type="number" name="age" value={renalInputs.age} onChange={handleRenal} placeholder="e.g. 55" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={renalInputs.weight} onChange={handleRenal} placeholder="e.g. 65" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Serum Creatinine (mg/dL)</label><input type="number" name="scr" value={renalInputs.scr} onChange={handleRenal} placeholder="e.g. 1.2" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={renalInputs.gender} onChange={handleRenal} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
-              </div>
-
-              <div className={`p-4 rounded-xl flex justify-between mb-4 border ${
-                isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
-              }`}>
-                <div><span className="text-xs text-blue-500 font-bold block">Cockcroft-Gault (ClCr)</span><span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{clcr} mL/min</span></div>
-                <div><span className="text-xs text-blue-500 font-bold block">CKD-EPI (eGFR)</span><span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{egfr} mL/min/1.73m²</span></div>
-              </div>
-
-              {egfr > 0 && egfr < 30 && (
-                <div className="bg-red-500/10 border border-red-500/40 p-4 rounded-xl text-xs text-red-600 mb-2 font-medium">
-                  🚨 <strong>ALERT: eGFR &lt; 30 mL/min (CKD Stage 4-5 Severe):</strong> Risiko tinggi toksisitas obat ginjal!
-                </div>
-              )}
-              {egfr >= 30 && egfr < 60 && (
-                <div className="bg-amber-500/10 border border-amber-500/40 p-4 rounded-xl text-xs text-amber-600 mb-2 font-medium">
-                  ⚠️ <strong>WARNING: eGFR 30 - 59 mL/min (CKD Stage 3):</strong> Gangguan ginjal moderat.
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'anthro' && (
-            <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Tinggi Badan (cm)</label><input type="number" name="height" value={anthroInputs.height} onChange={handleAnthro} placeholder="e.g. 165" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={anthroInputs.weight} onChange={handleAnthro} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={anthroInputs.gender} onChange={handleAnthro} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
-              </div>
-
-              <div className={`grid grid-cols-3 gap-2 p-4 rounded-2xl text-center mb-4 border ${
-                isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
-              }`}>
-                <div><span className="text-xs text-blue-500 font-bold block mb-1">BSA</span><span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{bsa} m²</span></div>
-                <div><span className="text-xs text-blue-500 font-bold block mb-1">BMI</span><span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{bmi} kg/m²</span></div>
-                <div><span className="text-xs text-blue-500 font-bold block mb-1">IBW</span><span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ibw} kg</span></div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'kalori' && (
-            <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Usia (Tahun)</label><input type="number" name="age" value={tdeeInputs.age} onChange={handleTdee} placeholder="e.g. 24" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>TB (cm)</label><input type="number" name="height" value={tdeeInputs.height} onChange={handleTdee} placeholder="e.g. 170" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={tdeeInputs.weight} onChange={handleTdee} placeholder="e.g. 70" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={tdeeInputs.gender} onChange={handleTdee} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
-                <div>
-                  <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Tingkat Aktivitas Harian</label>
-                  <select name="activityLevel" value={tdeeInputs.activityLevel} onChange={handleTdee} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}>
-                    <option value="1.2">Sedentary (Jarang Olahraga)</option>
-                    <option value="1.375">Light Activity (Olahraga Ringan 1-3x/mg)</option>
-                    <option value="1.55">Moderate Activity (Olahraga Sedang 3-5x/mg)</option>
-                    <option value="1.725">Very Active (Olahraga Berat 6-7x/mg)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>🎯 Target Goal Pasien / User</label>
-                  <select name="goal" value={tdeeInputs.goal} onChange={handleTdee} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}>
-                    <option value="fat_loss">📉 Fat Loss / Diet Defisit (Turun BB)</option>
-                    <option value="maintain">⚖️ Maintenance (Jaga Berat Badan)</option>
-                    <option value="gain">📈 Muscle Gain / Surplus (Naik BB)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className={`grid grid-cols-1 md:grid-cols-3 gap-3 p-4 rounded-2xl text-center mb-4 border ${
-                isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
-              }`}>
-                <div><span className="text-[10px] font-bold text-blue-500 block mb-1">BMR</span><span className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{dietPlan.bmr} kcal</span></div>
-                <div><span className="text-[10px] font-bold text-blue-500 block mb-1">TDEE</span><span className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{dietPlan.tdee} kcal</span></div>
-                <div className="bg-emerald-500/10 border border-emerald-500/30 p-2 rounded-xl"><span className="text-[10px] font-bold text-emerald-500 block mb-1">TARGET</span><span className="text-2xl font-extrabold text-emerald-600">{dietPlan.targetCal} kcal</span></div>
-              </div>
-            </div>
-          )}
-
-          {/* ACTION BUTTONS */}
-          {activeTab !== 'dashboard' && activeTab !== 'soap' && (
-            <div className={`mt-8 border-t pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 ${
+          <div className={`p-6 md:p-8 rounded-2xl shadow-xl border transition-colors ${
+            isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-slate-200/50'
+          }`}>
+            <div className={`mb-6 border-b pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3 ${
               isDark ? 'border-slate-800' : 'border-slate-200'
             }`}>
-              <button
-                onClick={handleCopySummary}
-                className={`w-full sm:w-auto font-bold py-3 px-6 rounded-xl border transition-all flex items-center justify-center gap-2 text-xs cursor-pointer ${
-                  isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-200 hover:bg-slate-300 text-slate-800 border-slate-300'
-                }`}
-              >
-                📋 {t.copySaveBtn}
-              </button>
+              <div>
+                <h2 className={`text-xl font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <span>{menuItems.find((m) => m.id === activeTab)?.icon}</span>
+                  {menuItems.find((m) => m.id === activeTab)?.name}
+                </h2>
+                <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Kategori: {menuItems.find((m) => m.id === activeTab)?.category} • Sesi Aktif: <span className="text-blue-500 font-bold">{userRole}</span>
+                </p>
+              </div>
 
-              <button
-                onClick={handleDownloadPDF}
-                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs cursor-pointer"
-              >
-                📥 {t.downloadPdfBtn}
-              </button>
+              {activeTab !== 'dashboard' && activeTab !== 'soap' && (
+                <div className="flex items-center gap-2">
+                  <button onClick={handleResetForm} className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
+                    isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300 border-slate-300'
+                  }`}>
+                    {t.resetBtn}
+                  </button>
+                  <button onClick={() => setShowInfo(true)} className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
+                    isDark ? 'bg-blue-950/60 text-blue-400 border-blue-800 hover:bg-blue-900/60' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                  }`}>
+                    {t.infoBtn}
+                  </button>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        <HistoryLog
-          history={history}
-          handleClearHistory={handleClearHistory}
-          setHistory={setHistory}
-        />
-      </main>
+            {activeTab === 'dashboard' && (
+              <DashboardOverview 
+                history={history} 
+                onNavigateTab={(tabId) => setActiveTab(tabId)} 
+              />
+            )}
+
+            {activeTab === 'soap' && (
+              <SoapGenerator currentInputs={getCurrentActiveInputs()} activeTab={activeTab} />
+            )}
+
+            {activeTab === 'pk' && (
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Target Conc (mg/L)</label><input type="number" name="targetConc" value={pkInputs.targetConc} onChange={handlePk} placeholder="e.g. 15" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Vd (L/kg)</label><input type="number" name="vd" value={pkInputs.vd} onChange={handlePk} placeholder="e.g. 0.7" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={pkInputs.weight} onChange={handlePk} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Clearance (L/jam)</label><input type="number" name="clearance" value={pkInputs.clearance} onChange={handlePk} placeholder="e.g. 3.0" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Interval (Jam)</label><input type="number" name="interval" value={pkInputs.interval} onChange={handlePk} placeholder="e.g. 8" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                </div>
+
+                <div className={`p-4 rounded-xl flex justify-between mb-4 border ${
+                  isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <div><span className="text-xs text-blue-500 font-bold block">Loading Dose (LD)</span><span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ld} mg</span></div>
+                  <div><span className="text-xs text-blue-500 font-bold block">Maintenance Dose (MD)</span><span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{md} mg/{pkInputs.interval || 0}j</span></div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'drip' && (
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Dosis Target (mcg/kg/min)</label><input type="number" name="dose" value={dripInputs.dose} onChange={handleDrip} placeholder="e.g. 5" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={dripInputs.weight} onChange={handleDrip} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jumlah Obat Dalam Vial/Ampul (mg)</label><input type="number" name="drugMg" value={dripInputs.drugMg} onChange={handleDrip} placeholder="e.g. 250" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Volume Pelarut Syringe Pump (mL)</label><input type="number" name="volumeMl" value={dripInputs.volumeMl} onChange={handleDrip} placeholder="e.g. 50" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                </div>
+
+                <div className={`p-4 rounded-xl text-center mb-4 border ${
+                  isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <span className="text-xs text-blue-500 font-bold block">Kecepatan Syringe Pump / Infusiometer</span>
+                  <span className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{drip} mL/jam</span>
+                </div>
+                {drip > 50 && (
+                  <div className="bg-amber-500/10 border border-amber-500/40 p-3 rounded-xl text-amber-600 font-medium text-xs">
+                    ⚠️ <strong>WARNING:</strong> Kecepatan Drip Tinggi ({drip} mL/jam). Pertimbangkan Vena Sentral (CVC)!
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'peds_geri' && <PedsGeriCalculator />}
+            {activeTab === 'abx_dose' && <AntibioticDoseCalculator />}
+            {activeTab === 'stopp_start' && <StoppStartCalculator />}
+            {activeTab === 'crrt' && <CrrtDoseCalculator />}
+            {activeTab === 'gout' && <GoutCalculator onSaveHistory={(entry) => saveToHistoryLog(entry.type, entry.summary)} />}
+            {activeTab === 'lipid' && <LipidCalculator onSaveHistory={(entry) => saveToHistoryLog(entry.type, entry.summary)} />}
+            {activeTab === 'toxicology' && <ToxicologyCalculator onSaveHistory={(entry) => saveToHistoryLog(entry.type, entry.summary)} />}
+            {activeTab === 'framingham' && <FraminghamCalculator />}
+            {activeTab === 'gcs' && <GcsCalculator />}
+            {activeTab === 'triage' && <TriageCalculator />}
+            {activeTab === 'fluid' && <FluidCalculator />}
+            {activeTab === 'electro' && <ElectrolyteCorrectionCalculator />}
+            {activeTab === 'ards' && <ArdsCalculator />}
+            {activeTab === 'pregnancy' && <PregnancyCalculator />}
+            {activeTab === 'renal_dose' && <RenalDosingChecker />}
+            {activeTab === 'label_print' && <PrescriptionEtiquetteCalculator />}
+            {activeTab === 'hd_dose' && <HemodialysisDoseCalculator />}
+            
+            {activeTab === 'hepar' && <ChildPughCalculator />}
+            {activeTab === 'diabetes' && <DiabetesCalculator />}
+
+            {activeTab === 'steroid' && (
+              <SteroidConversionCalculator 
+                inputs={steroidInputs}
+                setInputs={setSteroidInputs}
+              />
+            )}
+
+            {activeTab === 'nti' && (
+              <NtiCalculator
+                ntiSubTab={ntiSubTab}
+                setNtiSubTab={setNtiSubTab}
+                ntiPhenytoin={ntiPhenytoin}
+                setNtiPhenytoin={setNtiPhenytoin}
+                phenytoinAdj={phenytoinAdj}
+                ntiVanco={ntiVanco}
+                setNtiVanco={setNtiVanco}
+                vancoAuc={vancoAuc}
+                ntiTheo={ntiTheo}
+                setNtiTheo={setNtiTheo}
+                theoDoseRec={0}
+                ntiWarfarin={ntiWarfarin}
+                setNtiWarfarin={setNtiWarfarin}
+                warfarinRec={{ status: 'Stable', action: 'Lanjutkan regimen' }}
+                ntiAmino={ntiAmino}
+                setNtiAmino={setNtiAmino}
+                aminoDose={{ ibw: 55, doseMg: 400, dosingWeight: 'IBW', interval: '24 jam' }}
+              />
+            )}
+
+            {activeTab === 'tdm_chart' && <TdmChartCalculator />}
+            {activeTab === 'ddi' && <DdiCalculator />}
+
+            {activeTab === 'renal' && (
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Usia (Tahun)</label><input type="number" name="age" value={renalInputs.age} onChange={handleRenal} placeholder="e.g. 55" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={renalInputs.weight} onChange={handleRenal} placeholder="e.g. 65" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Serum Creatinine (mg/dL)</label><input type="number" name="scr" value={renalInputs.scr} onChange={handleRenal} placeholder="e.g. 1.2" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={renalInputs.gender} onChange={handleRenal} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
+                </div>
+
+                <div className={`p-4 rounded-xl flex justify-between mb-4 border ${
+                  isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <div><span className="text-xs text-blue-500 font-bold block">Cockcroft-Gault (ClCr)</span><span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{clcr} mL/min</span></div>
+                  <div><span className="text-xs text-blue-500 font-bold block">CKD-EPI (eGFR)</span><span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{egfr} mL/min/1.73m²</span></div>
+                </div>
+
+                {egfr > 0 && egfr < 30 && (
+                  <div className="bg-red-500/10 border border-red-500/40 p-4 rounded-xl text-xs text-red-600 mb-2 font-medium">
+                    🚨 <strong>ALERT: eGFR &lt; 30 mL/min (CKD Stage 4-5 Severe):</strong> Risiko tinggi toksisitas obat ginjal!
+                  </div>
+                )}
+                {egfr >= 30 && egfr < 60 && (
+                  <div className="bg-amber-500/10 border border-amber-500/40 p-4 rounded-xl text-xs text-amber-600 mb-2 font-medium">
+                    ⚠️ <strong>WARNING: eGFR 30 - 59 mL/min (CKD Stage 3):</strong> Gangguan ginjal moderat.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'anthro' && (
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Tinggi Badan (cm)</label><input type="number" name="height" value={anthroInputs.height} onChange={handleAnthro} placeholder="e.g. 165" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={anthroInputs.weight} onChange={handleAnthro} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={anthroInputs.gender} onChange={handleAnthro} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
+                </div>
+
+                <div className={`grid grid-cols-3 gap-2 p-4 rounded-2xl text-center mb-4 border ${
+                  isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <div><span className="text-xs text-blue-500 font-bold block mb-1">BSA</span><span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{bsa} m²</span></div>
+                  <div><span className="text-xs text-blue-500 font-bold block mb-1">BMI</span><span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{bmi} kg/m²</span></div>
+                  <div><span className="text-xs text-blue-500 font-bold block mb-1">IBW</span><span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ibw} kg</span></div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'kalori' && (
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Usia (Tahun)</label><input type="number" name="age" value={tdeeInputs.age} onChange={handleTdee} placeholder="e.g. 24" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>TB (cm)</label><input type="number" name="height" value={tdeeInputs.height} onChange={handleTdee} placeholder="e.g. 170" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={tdeeInputs.weight} onChange={handleTdee} placeholder="e.g. 70" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
+                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={tdeeInputs.gender} onChange={handleTdee} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
+                  <div>
+                    <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Tingkat Aktivitas Harian</label>
+                    <select name="activityLevel" value={tdeeInputs.activityLevel} onChange={handleTdee} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}>
+                      <option value="1.2">Sedentary (Jarang Olahraga)</option>
+                      <option value="1.375">Light Activity (Olahraga Ringan 1-3x/mg)</option>
+                      <option value="1.55">Moderate Activity (Olahraga Sedang 3-5x/mg)</option>
+                      <option value="1.725">Very Active (Olahraga Berat 6-7x/mg)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>🎯 Target Goal Pasien / User</label>
+                    <select name="goal" value={tdeeInputs.goal} onChange={handleTdee} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}>
+                      <option value="fat_loss">📉 Fat Loss / Diet Defisit (Turun BB)</option>
+                      <option value="maintain">⚖️ Maintenance (Jaga Berat Badan)</option>
+                      <option value="gain">📈 Muscle Gain / Surplus (Naik BB)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className={`grid grid-cols-1 md:grid-cols-3 gap-3 p-4 rounded-2xl text-center mb-4 border ${
+                  isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <div><span className="text-[10px] font-bold text-blue-500 block mb-1">BMR</span><span className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{dietPlan.bmr} kcal</span></div>
+                  <div><span className="text-[10px] font-bold text-blue-500 block mb-1">TDEE</span><span className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{dietPlan.tdee} kcal</span></div>
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 p-2 rounded-xl"><span className="text-[10px] font-bold text-emerald-500 block mb-1">TARGET</span><span className="text-2xl font-extrabold text-emerald-600">{dietPlan.targetCal} kcal</span></div>
+                </div>
+              </div>
+            )}
+
+            {/* ACTION BUTTONS */}
+            {activeTab !== 'dashboard' && activeTab !== 'soap' && (
+              <div className={`mt-8 border-t pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 ${
+                isDark ? 'border-slate-800' : 'border-slate-200'
+              }`}>
+                <button
+                  onClick={handleCopySummary}
+                  className={`w-full sm:w-auto font-bold py-3 px-6 rounded-xl border transition-all flex items-center justify-center gap-2 text-xs cursor-pointer ${
+                    isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-200 hover:bg-slate-300 text-slate-800 border-slate-300'
+                  }`}
+                >
+                  📋 {t.copySaveBtn}
+                </button>
+
+                <button
+                  onClick={handleDownloadPDF}
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs cursor-pointer"
+                >
+                  📥 {t.downloadPdfBtn}
+                </button>
+              </div>
+            )}
+          </div>
+
+          <HistoryLog
+            history={history}
+            handleClearHistory={handleClearHistory}
+            setHistory={setHistory}
+          />
+        </main>
+      </div>
 
       <AiAssistantWidget 
         currentInputs={getCurrentActiveInputs()}
@@ -943,8 +953,8 @@ export default function App() {
         </div>
       )}
 
-      {/* TEMPLATE PDF DINAMIS */}
-      <div id="pdf-template" style={{ display: 'none' }} className="p-8 bg-white text-black font-sans text-xs">
+      {/* TEMPLATE PDF DINAMIS (TERSEMBUNYI SECARA STRICT DI LAYAR) */}
+      <div id="pdf-template" style={{ display: 'none', position: 'absolute', left: '-9999px', top: '-9999px', width: '800px', pointerEvents: 'none' }} className="p-8 bg-white text-black font-sans text-xs">
         <div style={{ borderBottom: '3px double #000', paddingBottom: '12px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '15px' }}>
             {hospitalInfo.logoUrl ? (

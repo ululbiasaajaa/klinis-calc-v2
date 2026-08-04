@@ -40,7 +40,7 @@ const initialVentilator = {
   pao2: '',
 };
 
-export const usePatientStore = create()(
+export const usePatientStore = create(
   persist(
     (set, get) => ({
       // 1. MASTER & BASELINE DATA
@@ -100,25 +100,21 @@ export const usePatientStore = create()(
       },
 
       // 4. ACTIONS / MUTATORS
-      // Update data demografi & lab dasar
       setPatientData: (data) =>
         set((state) => ({
           patient: { ...state.patient, ...data },
         })),
 
-      // Update Tanda Vital
       setVitals: (data) =>
         set((state) => ({
           vitals: { ...state.vitals, ...data },
         })),
 
-      // Update Ventilator & Gas Darah
       setVentilator: (data) =>
         set((state) => ({
           ventilator: { ...state.ventilator, ...data },
         })),
 
-      // Tambah Hasil Lab Time-Series Baru (Untuk Outcome Tracker)
       addLabRecord: (labEntry) =>
         set((state) => ({
           labsHistory: [
@@ -131,7 +127,6 @@ export const usePatientStore = create()(
           ],
         })),
 
-      // Tambah Obat Aktif Pasien (Untuk DDI Engine)
       addMedication: (medEntry) =>
         set((state) => ({
           medications: [
@@ -144,13 +139,11 @@ export const usePatientStore = create()(
           ],
         })),
 
-      // Hapus/Nonaktifkan Obat
       removeMedication: (medId) =>
         set((state) => ({
           medications: state.medications.filter((m) => m.id !== medId),
         })),
 
-      // Encounter Management
       setEncounter: (encounter) => set({ activeEncounter: encounter }),
 
       closeEncounter: () =>
@@ -160,7 +153,6 @@ export const usePatientStore = create()(
             : null,
         })),
 
-      // Reset Seluruh Context Pasien
       resetPatient: () =>
         set({
           patient: initialBaseline,
@@ -173,7 +165,7 @@ export const usePatientStore = create()(
         }),
     }),
     {
-      name: 'clinical_suite_patient_storage_v3', // Upgrade versi storage
+      name: 'clinical_suite_patient_storage_v3',
     }
   )
 );
