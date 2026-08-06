@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown'; // <-- Tambahkan import ini
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { usePatientStore } from '../store/usePatientStore';
 
 export default function AiAssistantWidget({ currentInputs, activeTab }) {
+  // ... (kode state dan fungsi lainnya biarkan sama persis)
   const { theme } = useTheme();
   const { lang } = useLanguage();
   const isDark = theme === 'dark';
@@ -128,7 +130,12 @@ export default function AiAssistantWidget({ currentInputs, activeTab }) {
                         : 'bg-slate-100 text-slate-700 rounded-bl-none'
                       : 'bg-blue-600 text-white rounded-br-none shadow-md'
                   }`}>
-                    {m.text}
+                    {/* BAGIAN INI YANG DIUBAH: Gunakan ReactMarkdown untuk pesan AI */}
+                    {isAi ? (
+                      <ReactMarkdown>{m.text}</ReactMarkdown>
+                    ) : (
+                      m.text
+                    )}
                   </div>
                 </div>
               );

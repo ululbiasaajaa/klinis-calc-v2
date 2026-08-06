@@ -38,6 +38,11 @@ Tugas:
 - jangan mengarang
 - gunakan bahasa user
 
+ATURAN FORMAT WAJIB:
+- JANGAN gunakan format markdown sama sekali (jangan pakai tanda bintang * atau ** untuk menebalkan/memiringkan teks).
+- JANGAN gunakan simbol dolar ($) atau format LaTeX.
+- Gunakan teks biasa (plain text) yang bersih, profesional, rapi, dan mudah dibaca tanpa ada simbol formatting yang bocor.
+
 Modul aktif:
 ${activeTab}
 
@@ -49,7 +54,7 @@ ${JSON.stringify(patientContext.clinicalContext ?? {}, null, 2)}
 `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash", // Menggunakan model Gemini 3.6 Flash terbaru
+      model: "gemini-3.6-flash",
       contents: `${systemInstruction}
 
 User:
