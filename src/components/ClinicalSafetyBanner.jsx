@@ -42,12 +42,25 @@ export default function ClinicalSafetyBanner({ activeTab, currentInputs }) {
       }
     }
 
-    // 3. MEDICATION DDI / HIGH-RISK DRUG CHECK
+    // 3. MEDICATION DDI / HIGH-RISK DRUG CHECK (Diperbarui dengan rincian nama obat & dosis)
     if (medications && medications.length > 0) {
+      const medListString = medications
+        .map((med, idx) => {
+          if (typeof med === 'object' && med !== null) {
+            const name = med.name || med.drugName || 'Obat Tanpa Nama';
+            const doseVal = med.dose || med.dosage || med.strength || '';
+            const freq = med.frequency || med.interval || '';
+            const doseDetail = [doseVal, freq].filter(Boolean).join(' - ');
+            return `${idx + 1}. ${name}${doseDetail ? ` (${doseDetail})` : ' (Dosis Standar)'}`;
+          }
+          return `${idx + 1}. ${med}`;
+        })
+        .join('\n');
+
       alerts.push({
         type: 'info',
         title: '💊 ACTIVE MEDICATIONS MONITORED:',
-        desc: `Terdaftar ${medications.length} obat aktif. Sistem memantau potensi interaksi & penyesuaian dosis harian.`
+        desc: `Terdaftar ${medications.length} obat aktif beserta pemantauan dosis & potensi interaksi:\n${medListString}`
       });
     }
 
@@ -85,9 +98,9 @@ export default function ClinicalSafetyBanner({ activeTab, currentInputs }) {
         return (
           <div key={idx} className={`p-4 rounded-2xl bg-gradient-to-r border shadow-xl flex items-start gap-3 transition-all ${borderBgStyle}`}>
             <span className="text-xl">🛡️</span>
-            <div className="text-xs">
+            <div className="text-xs w-full">
               <span className="font-bold block mb-0.5">{item.title}</span>
-              <p className={`leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              <p className={`leading-relaxed whitespace-pre-line ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                 {item.desc}
               </p>
             </div>
