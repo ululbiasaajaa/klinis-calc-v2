@@ -6,7 +6,13 @@ const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
 
-app.use(cors());
+// Konfigurasi CORS diperkuat agar aman untuk semua origin (termasuk localhost:5173)
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
 app.use(express.json());
 
 const ai = new GoogleGenAI({
@@ -43,7 +49,7 @@ ${JSON.stringify(patientContext.clinicalContext ?? {}, null, 2)}
 `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: "gemini-2.5-flash", // Diperbaiki dari "gemini-3.6-flash" ke model flash yang valid
       contents: `${systemInstruction}
 
 User:
@@ -55,9 +61,9 @@ ${prompt}`
     });
 
   } catch (err) {
-    console.error(err);
+    console.error("AI Backend Error:", err);
     res.status(500).json({
-      reply: "AI sedang mengalami gangguan."
+      reply: "AI sedang mengalami gangguan pada server."
     });
   }
 });
@@ -65,5 +71,5 @@ ${prompt}`
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("🚀 AI Backend Running");
+  console.log(`🚀 AI Backend Running on port ${PORT}`);
 });

@@ -38,7 +38,7 @@ export default function AiAssistantWidget({ currentInputs, activeTab }) {
     setIsLoading(true);
 
     try {
-      const backendUrl = 'http://localhost:3000/api/chat';
+      const backendUrl = 'https://klinis-calc-v2-production.up.railway.app/api/chat';
 
       const response = await fetch(backendUrl, {
         method: 'POST',
@@ -51,7 +51,7 @@ export default function AiAssistantWidget({ currentInputs, activeTab }) {
             medications,
             clinicalContext: computedContext
           },
-          history: messages // Kirim riwayat chat agar AI ingat percakapan sebelumnya
+          history: messages
         })
       });
 
