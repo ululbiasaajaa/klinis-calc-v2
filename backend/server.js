@@ -6,7 +6,7 @@ const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
 
-// Konfigurasi CORS diperkuat agar aman untuk semua origin (termasuk localhost:5173)
+// Konfigurasi CORS agar aman untuk akses lokal maupun production
 app.use(cors({
   origin: "*",
   methods: ["GET", "POST", "OPTIONS"],
@@ -49,7 +49,7 @@ ${JSON.stringify(patientContext.clinicalContext ?? {}, null, 2)}
 `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash", // Diperbaiki dari "gemini-3.6-flash" ke model flash yang valid
+      model: "gemini-2.5-flash",
       contents: `${systemInstruction}
 
 User:
