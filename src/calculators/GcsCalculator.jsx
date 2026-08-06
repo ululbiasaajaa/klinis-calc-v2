@@ -14,8 +14,16 @@ export default function GcsCalculator() {
   const [motor, setMotor] = useState('6');     // 1 - 6
   const [verbal, setVerbal] = useState('5');   // 1 - 5
 
-  // Hitung Total Skor GCS
-  const totalGcs = parseInt(eye) + parseInt(motor) + parseInt(verbal);
+  // Hitung Total Skor GCS dengan Radix dan Fallback Aman
+  const parsedEye = parseInt(eye, 10);
+  const parsedMotor = parseInt(motor, 10);
+  const parsedVerbal = parseInt(verbal, 10);
+
+  const eyeVal = isNaN(parsedEye) ? 4 : parsedEye;
+  const motorVal = isNaN(parsedMotor) ? 6 : parsedMotor;
+  const verbalVal = isNaN(parsedVerbal) ? 5 : parsedVerbal;
+
+  const totalGcs = eyeVal + motorVal + verbalVal;
 
   // Penentuan Tingkat Kesadaran Berdasarkan Total GCS
   let consciousnessLevel = 'Compos Mentis (Sadar Penuh / Normal)';
@@ -41,7 +49,7 @@ export default function GcsCalculator() {
     addLabRecord({
       date: new Date().toLocaleDateString('id-ID'),
       parameter: 'Glasgow Coma Scale (GCS)',
-      value: `E${eye}M${motor}V${verbal} = ${totalGcs} (${consciousnessLevel})`,
+      value: `E${eyeVal}M${motorVal}V${verbalVal} = ${totalGcs} (${consciousnessLevel})`,
       unit: 'Skor GCS',
       source: 'Evaluasi Neurologis v3'
     });
@@ -54,7 +62,7 @@ export default function GcsCalculator() {
       name: 'Protokol Proteksi Jalan Napas (ETT / Intubasi / Ventilator)',
       dose: 'Pemasangan ETT & Monitoring SpO2 / ETCO2 Ketat (GCS <= 8)',
       category: 'Emergency Airway / Resusitasi',
-      source: `GCS Koma: E${eye}M${motor}V${verbal} (${totalGcs})`
+      source: `GCS Koma: E${eyeVal}M${motorVal}V${verbalVal} (${totalGcs})`
     });
     alert(`🚨 Protokol Emergency Airway Management berhasil ditambahkan ke daftar instruksi medis pasien!`);
   };
@@ -62,7 +70,7 @@ export default function GcsCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
-      {patient.patientName && (
+      {patient?.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Evaluasi GCS & kesadaran neurologis.</span>
           <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
@@ -80,11 +88,16 @@ export default function GcsCalculator() {
           
           {/* 1. EYE (MATA) */}
           <div>
-            <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>1. Eye / Respon Membuka Mata (E)</label>
+            <label htmlFor="gcs-eye-select" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              1. Eye / Respon Membuka Mata (E)
+            </label>
             <select
+              id="gcs-eye-select"
               value={eye}
               onChange={(e) => setEye(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${
+                isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
             >
               <option value="4">4 - Membuka mata spontan (Spontaneous)</option>
               <option value="3">3 - Membuka mata dengan perintah suara (To Speech)</option>
@@ -95,11 +108,16 @@ export default function GcsCalculator() {
 
           {/* 2. MOTORIK */}
           <div>
-            <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>2. Motorik / Respon Gerakan (M)</label>
+            <label htmlFor="gcs-motor-select" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              2. Motorik / Respon Gerakan (M)
+            </label>
             <select
+              id="gcs-motor-select"
               value={motor}
               onChange={(e) => setMotor(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${
+                isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
             >
               <option value="6">6 - Mengikuti perintah dengan baik (Obeys Commands)</option>
               <option value="5">5 - Melokalisir nyeri / Mengetahui letak nyeri (Localized Pain)</option>
@@ -112,11 +130,16 @@ export default function GcsCalculator() {
 
           {/* 3. VERBAL */}
           <div>
-            <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>3. Verbal / Respon Bicara (V)</label>
+            <label htmlFor="gcs-verbal-select" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              3. Verbal / Respon Bicara (V)
+            </label>
             <select
+              id="gcs-verbal-select"
               value={verbal}
               onChange={(e) => setVerbal(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${
+                isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
             >
               <option value="5">5 - Orientasi baik, sadar, bicara normal (Oriented)</option>
               <option value="4">4 - Bingung, disorientasi tempat/waktu (Confused)</option>
@@ -134,7 +157,9 @@ export default function GcsCalculator() {
         isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
       }`}>
         <div>
-          <span className="text-xs text-blue-500 font-bold block mb-1">TOTAL SKOR GCS: E{eye} M{motor} V{verbal} = <strong className="text-base">{totalGcs}</strong></span>
+          <span className="text-xs text-blue-500 font-bold block mb-1">
+            TOTAL SKOR GCS: E{eyeVal} M{motorVal} V{verbalVal} = <strong className="text-base">{totalGcs}</strong>
+          </span>
           <div className="flex items-center gap-2 mt-1">
             <span className={`px-3 py-1 rounded-lg font-extrabold text-xs border ${badgeColor}`}>
               {consciousnessLevel}
@@ -152,7 +177,11 @@ export default function GcsCalculator() {
         <button
           type="button"
           onClick={handleSaveToTracker}
-          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+          className={`font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2 border ${
+            isDark
+              ? 'bg-slate-800 hover:bg-slate-700 text-blue-400 border-slate-700'
+              : 'bg-slate-100 hover:bg-slate-200 text-blue-700 border-slate-300'
+          }`}
         >
           📈 Simpan Skor GCS ke Outcome Tracker
         </button>

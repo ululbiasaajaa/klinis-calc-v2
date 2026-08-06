@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { usePatientStore } from '../store/usePatientStore';
 
-export default function DashboardOverview({ history, onNavigateTab }) {
+export default function DashboardOverview({ history = [], onNavigateTab }) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  // AMBIL PASIEN & COMPUTED CONTEXT LANGSUNG DARI STORE V3
+  // AMBIL PASIEN DARI STORE V3
   const { patient } = usePatientStore();
 
   // State untuk Pengaturan Kop Surat
@@ -49,7 +49,7 @@ export default function DashboardOverview({ history, onNavigateTab }) {
       
       {/* BANNER SELAMAT DATANG */}
       <div className={`p-6 rounded-2xl border relative overflow-hidden ${
-        isDark ? 'bg-gradient-to-r from-blue-950/80 to-slate-900 border-blue-800/50' : 'bg-gradient-to-r from-blue-600 to-blue-800 text-white border-blue-700'
+        isDark ? 'bg-gradient-to-r from-blue-950/80 to-slate-900 border-blue-800/50 text-slate-100' : 'bg-gradient-to-r from-blue-600 to-blue-800 text-white border-blue-700'
       }`}>
         <div className="relative z-10 space-y-2">
           <span className="text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-full bg-blue-500/30 text-blue-200 inline-block">
@@ -65,16 +65,16 @@ export default function DashboardOverview({ history, onNavigateTab }) {
         </div>
       </div>
 
-      {/* PENGATURAN KOP SURAT LAPORAN PDF (PENGGANTI KARTU PASIEN KEMBAR) */}
+      {/* PENGATURAN KOP SURAT LAPORAN PDF */}
       <div className={`p-5 rounded-2xl border ${
-        isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+        isDark ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800 shadow-sm'
       }`}>
-        <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-800/60">
-          <span className="font-bold text-xs text-blue-500 flex items-center gap-1.5">
+        <div className={`flex justify-between items-center mb-3 pb-2 border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200'}`}>
+          <span className="font-bold text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
             🏥 Pengaturan Kop Surat Laporan PDF (Instansi / RS)
           </span>
           {isSavedKop && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 animate-pulse">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-bold border border-emerald-500/20 animate-pulse">
               ✅ Tersimpan!
             </span>
           )}
@@ -82,23 +82,33 @@ export default function DashboardOverview({ history, onNavigateTab }) {
 
         <form onSubmit={handleSaveKop} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-[10px] text-slate-400 block mb-1 font-semibold">NAMA RUMAH SAKIT / INSTANSI</label>
+            <label htmlFor="hospital-name-input" className={`text-[10px] block mb-1 font-semibold cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              NAMA RUMAH SAKIT / INSTANSI
+            </label>
             <input
+              id="hospital-name-input"
               type="text"
               value={hospitalName}
               onChange={(e) => setHospitalName(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-xs text-white outline-none focus:border-blue-500"
+              className={`w-full px-3 py-2 rounded-xl text-xs outline-none border ${
+                isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
+              }`}
               placeholder="Contoh: RSUD Dr. Soetomo"
             />
           </div>
           <div>
-            <label className="text-[10px] text-slate-400 block mb-1 font-semibold">ALAMAT / KONTAK INSTANSI</label>
+            <label htmlFor="hospital-address-input" className={`text-[10px] block mb-1 font-semibold cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              ALAMAT / KONTAK INSTANSI
+            </label>
             <div className="flex gap-2">
               <input
+                id="hospital-address-input"
                 type="text"
                 value={hospitalAddress}
                 onChange={(e) => setHospitalAddress(e.target.value)}
-                className="flex-1 bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-xs text-white outline-none focus:border-blue-500"
+                className={`flex-1 px-3 py-2 rounded-xl text-xs outline-none border ${
+                  isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
+                }`}
                 placeholder="Contoh: Jl. Mayjen Prof. Dr. Moestopo"
               />
               <button
@@ -115,41 +125,41 @@ export default function DashboardOverview({ history, onNavigateTab }) {
       {/* KARTU STATISTIK UTAMA (METRICS) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className={`p-4 rounded-2xl border flex items-center gap-4 ${
-          isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+          isDark ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
         }`}>
           <div className="p-3 rounded-xl bg-blue-500/10 text-blue-500 text-2xl font-bold">
             📈
           </div>
           <div>
-            <span className="text-slate-400 text-[10px] font-bold block">TOTAL SESI / RIWAYAT</span>
+            <span className={`text-[10px] font-bold block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>TOTAL SESI / RIWAYAT</span>
             <span className={`text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{totalCalculations}</span>
             <span className="text-[10px] text-emerald-500 block mt-0.5">Tercatat di cache lokal</span>
           </div>
         </div>
 
         <div className={`p-4 rounded-2xl border flex items-center gap-4 ${
-          isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+          isDark ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
         }`}>
           <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-500 text-2xl font-bold">
             ⭐
           </div>
           <div>
-            <span className="text-slate-400 text-[10px] font-bold block">MODUL TERFAVORIT</span>
+            <span className={`text-[10px] font-bold block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>MODUL TERFAVORIT</span>
             <span className={`text-lg font-black truncate max-w-[150px] block ${isDark ? 'text-white' : 'text-slate-900'}`}>{favoriteModule}</span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">Paling sering dievaluasi</span>
+            <span className={`text-[10px] block mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Paling sering dievaluasi</span>
           </div>
         </div>
 
         <div className={`p-4 rounded-2xl border flex items-center gap-4 ${
-          isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+          isDark ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
         }`}>
           <div className="p-3 rounded-xl bg-amber-500/10 text-amber-500 text-2xl font-bold">
             🏥
           </div>
           <div>
-            <span className="text-slate-400 text-[10px] font-bold block">STATUS SISTEM</span>
+            <span className={`text-[10px] font-bold block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>STATUS SISTEM</span>
             <span className="text-lg font-black text-emerald-500 block">Optimal v3</span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">Single Source of Truth Active</span>
+            <span className={`text-[10px] block mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Single Source of Truth Active</span>
           </div>
         </div>
       </div>
@@ -161,9 +171,10 @@ export default function DashboardOverview({ history, onNavigateTab }) {
           {quickModules.map((mod) => (
             <button
               key={mod.id}
+              type="button"
               onClick={() => onNavigateTab(mod.id)}
               className={`p-4 rounded-2xl border text-left transition-all hover:scale-[1.02] flex items-start gap-3 group cursor-pointer ${
-                isDark ? 'bg-slate-900 border-slate-800 hover:border-blue-500' : 'bg-white border-slate-200 hover:border-blue-600 shadow-sm'
+                isDark ? 'bg-slate-900 border-slate-800 hover:border-blue-500 text-slate-100' : 'bg-white border-slate-200 hover:border-blue-600 text-slate-800 shadow-sm'
               }`}
             >
               <span className="text-2xl p-2 rounded-xl bg-blue-500/10 group-hover:bg-blue-600 group-hover:text-white transition-all">
@@ -173,7 +184,7 @@ export default function DashboardOverview({ history, onNavigateTab }) {
                 <h4 className={`font-bold text-xs group-hover:text-blue-500 transition-colors ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {mod.name}
                 </h4>
-                <p className="text-slate-400 text-[10px] mt-1 line-clamp-2">
+                <p className={`text-[10px] mt-1 line-clamp-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                   {mod.desc}
                 </p>
               </div>

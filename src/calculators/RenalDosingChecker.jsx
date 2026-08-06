@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
 import { usePatientStore } from '../store/usePatientStore';
 
 export default function RenalDosingChecker() {
   const { theme } = useTheme();
-  const { lang } = useLanguage();
   const isDark = theme === 'dark';
 
   // AMBIL DATA PASIEN GLOBAL DAN DISPATCHERS V3
@@ -107,7 +105,7 @@ export default function RenalDosingChecker() {
 
   return (
     <div className="space-y-6 text-xs">
-      {patient.patientName && (
+      {patient?.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Nilai ClCr di bawah otomatis dihitung dari profil pasien.</span>
           <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
@@ -117,17 +115,18 @@ export default function RenalDosingChecker() {
       <div className={`p-4 rounded-xl border ${
         isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-blue-50 border-blue-200 text-slate-700'
       }`}>
-        <p className="font-bold mb-1 text-blue-400">💊 Modul Auto-Checker Penyesuaian Dosis Obat Berbasis GFR / ClCr (v3):</p>
+        <p className="font-bold mb-1 text-blue-500">💊 Modul Auto-Checker Penyesuaian Dosis Obat Berbasis GFR / ClCr (v3):</p>
         <p className="leading-relaxed">
           Masukkan atau sesuaikan nilai klirens kreatinin (ClCr) pasien di bawah ini untuk melihat rekomendasi penyesuaian dosis obat high-risk secara real-time.
         </p>
       </div>
 
       <div>
-        <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+        <label htmlFor="renal-clcr-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
           Klirens Kreatinin Pasien (ClCr in mL/min):
         </label>
         <input
+          id="renal-clcr-input"
           type="number"
           value={inputs.clcr}
           onChange={(e) => setInputs({ ...inputs, clcr: e.target.value })}
@@ -185,7 +184,11 @@ export default function RenalDosingChecker() {
         <button
           type="button"
           onClick={handleSaveToTracker}
-          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+          className={`font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2 border ${
+            isDark
+              ? 'bg-slate-800 hover:bg-slate-700 text-blue-400 border-slate-700'
+              : 'bg-slate-100 hover:bg-slate-200 text-blue-700 border-slate-300'
+          }`}
         >
           📈 Simpan Evaluasi Renal Dosing ke Outcome Tracker
         </button>

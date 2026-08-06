@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { usePatientStore } from '../store/usePatientStore';
@@ -21,6 +23,8 @@ export default function PrescriptionEtiquetteCalculator() {
     notes: 'Kocok dahulu / Simpan pada suhu ruang',
     patientNameOverride: '',
   });
+
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // Auto-sync nama pasien dari Patient Context Bar
   useEffect(() => {
@@ -92,6 +96,40 @@ export default function PrescriptionEtiquetteCalculator() {
     win.document.close();
   };
 
+  // HANDLER DOWNLOAD ETIKET VERSUS PDF
+  const handleDownloadPdf = async () => {
+    const element = document.getElementById('pharmacy-label-print');
+    if (!element) return;
+
+    try {
+      setIsExportingPdf(true);
+      const canvas = await html2canvas(element, {
+        scale: 3, // High DPI rendering
+        useCORS: true,
+        backgroundColor: null
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      
+      // Ukuran Etiket Standar Thermal (80mm x 50mm)
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: [80, 50]
+      });
+
+      pdf.addImage(imgData, 'PNG', 0, 0, 80, 50);
+      
+      const safePatientName = (medInfo.patientNameOverride || 'Umum').replace(/[^a-zA-Z0-9]/g, '_');
+      pdf.save(`Etiket_${safePatientName}_${Date.now()}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('❌ Gagal mengunduh PDF etiket. Silakan coba lagi.');
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   // HANDLER AKSI V3 DISPATCHERS
   const handleAddToMedications = () => {
     addMedication({
@@ -117,7 +155,7 @@ export default function PrescriptionEtiquetteCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
-      {patient.patientName && (
+      {patient?.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Nama pasien otomatis masuk ke etiket resep.</span>
           <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
@@ -127,10 +165,11 @@ export default function PrescriptionEtiquetteCalculator() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* INPUT TIPE ETIKET */}
         <div>
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label htmlFor="label-type-select" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Tipe Etiket (Jalur Obat)' : 'Label Type (Route)'}
           </label>
           <select
+            id="label-type-select"
             name="type"
             value={medInfo.type}
             onChange={handleChange}
@@ -145,10 +184,11 @@ export default function PrescriptionEtiquetteCalculator() {
 
         {/* NAMA PASIEN DI ETIKET */}
         <div>
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label htmlFor="patient-name-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Nama Pasien pada Etiket' : 'Patient Name on Label'}
           </label>
           <input
+            id="patient-name-input"
             type="text"
             name="patientNameOverride"
             value={medInfo.patientNameOverride}
@@ -162,10 +202,11 @@ export default function PrescriptionEtiquetteCalculator() {
 
         {/* NAMA OBAT */}
         <div>
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label htmlFor="drug-name-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Nama Obat & Sediaan' : 'Medication Name & Form'}
           </label>
           <input
+            id="drug-name-input"
             type="text"
             name="drugName"
             value={medInfo.drugName}
@@ -179,10 +220,11 @@ export default function PrescriptionEtiquetteCalculator() {
 
         {/* ATURAN PAKAI (SIGNA) */}
         <div>
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label htmlFor="signa-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Aturan Pakai / Signa' : 'Directions / Signa'}
           </label>
           <input
+            id="signa-input"
             type="text"
             name="signa"
             value={medInfo.signa}
@@ -196,10 +238,11 @@ export default function PrescriptionEtiquetteCalculator() {
 
         {/* JUMLAH / QTY */}
         <div>
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label htmlFor="qty-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Jumlah Obat (Qty)' : 'Quantity (Qty)'}
           </label>
           <input
+            id="qty-input"
             type="text"
             name="qty"
             value={medInfo.qty}
@@ -213,10 +256,11 @@ export default function PrescriptionEtiquetteCalculator() {
 
         {/* EXP / BEYOND USE DATE */}
         <div>
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label htmlFor="exp-date-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Batas Kadaluarsa (BUD / Expired)' : 'Beyond Use Date (BUD)'}
           </label>
           <input
+            id="exp-date-input"
             type="date"
             name="expDate"
             value={medInfo.expDate}
@@ -229,10 +273,11 @@ export default function PrescriptionEtiquetteCalculator() {
 
         {/* CATATAN KHUSUS */}
         <div className="md:col-span-2">
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label htmlFor="notes-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {lang === 'id' ? 'Peringatan Khusus / Instruksi' : 'Special Instruction'}
           </label>
           <input
+            id="notes-input"
             type="text"
             name="notes"
             value={medInfo.notes}
@@ -247,7 +292,7 @@ export default function PrescriptionEtiquetteCalculator() {
 
       {/* PREVIEW TAMPILAN ETIKET OBAT AKAN DICETAK */}
       <div className={`border p-4 rounded-2xl ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-        <h4 className="text-xs font-bold text-slate-300 mb-3 flex items-center gap-2">
+        <h4 className={`text-xs font-bold mb-3 flex items-center gap-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
           <span>🏷️</span> Preview Etiket Obat Standar Rumah Sakit / Apotek:
         </h4>
 
@@ -317,12 +362,16 @@ export default function PrescriptionEtiquetteCalculator() {
         </div>
       </div>
 
-      {/* TOMBOL AKSI & CETAK ETIKET */}
+      {/* TOMBOL AKSI, DOWNLOAD PDF, & CETAK ETIKET */}
       <div className="flex flex-wrap justify-end gap-2 pt-2">
         <button
           type="button"
           onClick={handleSaveToTracker}
-          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+          className={`font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2 border ${
+            isDark
+              ? 'bg-slate-800 hover:bg-slate-700 text-blue-400 border-slate-700'
+              : 'bg-slate-100 hover:bg-slate-200 text-blue-700 border-slate-300'
+          }`}
         >
           📈 Simpan Dispensing ke Tracker
         </button>
@@ -332,6 +381,14 @@ export default function PrescriptionEtiquetteCalculator() {
           className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-2"
         >
           ➕ Tambahkan Obat ke Regimen Pasien
+        </button>
+        <button
+          type="button"
+          onClick={handleDownloadPdf}
+          disabled={isExportingPdf}
+          className="bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-white font-bold py-2.5 px-4 rounded-xl transition-all shadow-lg cursor-pointer flex items-center gap-2"
+        >
+          {isExportingPdf ? '⌛ Mengunduh PDF...' : '📄 Unduh PDF Etiket'}
         </button>
         <button
           type="button"

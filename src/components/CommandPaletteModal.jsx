@@ -86,6 +86,9 @@ export default function CommandPaletteModal({ isOpen, onClose, onSelectCalculato
     <div 
       className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/60 backdrop-blur-sm p-4 animate-fadeIn"
       onClick={onClose} // Klik area luar modal untuk menutup di HP
+      role="dialog"
+      aria-modal="true"
+      aria-label="Pencarian Cepat Kalkulator"
     >
       <div 
         onClick={(e) => e.stopPropagation()} // Mencegah klik di dalam kotak ikut menutup modal
@@ -94,23 +97,36 @@ export default function CommandPaletteModal({ isOpen, onClose, onSelectCalculato
         }`}
       >
         {/* INPUT PENCARIAN & TOMBOL TUTUP NYATA */}
-        <div className={`p-4 border-b flex items-center justify-between gap-3 ${isDark ? 'border-slate-800 bg-slate-900/50' : 'border-slate-200 bg-slate-50'}`}>
+        <div className={`p-4 border-b flex items-center justify-between gap-3 ${
+          isDark ? 'border-slate-800 bg-slate-900/50' : 'border-slate-200 bg-slate-50'
+        }`}>
           <div className="flex items-center gap-3 flex-1">
             <span className="text-base">🔍</span>
             <input
               autoFocus
+              id="command-palette-search"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cepat cari kalkulator (e.g. toksikologi, keracunan, alkohol, antidot)..."
               className="w-full bg-transparent outline-none text-sm font-semibold placeholder:text-slate-500"
+              aria-label="Cari kalkulator"
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono px-2 py-1 rounded border opacity-65 hidden sm:inline-block">ESC</span>
+            <span className={`text-[10px] font-mono px-2 py-1 rounded border hidden sm:inline-block ${
+              isDark ? 'border-slate-800 text-slate-400 bg-slate-900' : 'border-slate-300 text-slate-600 bg-slate-100'
+            }`}>
+              ESC
+            </span>
             <button 
+              type="button"
               onClick={onClose}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm border ${
+                isDark 
+                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' 
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+              }`}
             >
               ✕ Tutup
             </button>
@@ -120,7 +136,7 @@ export default function CommandPaletteModal({ isOpen, onClose, onSelectCalculato
         {/* DAFTAR HASIL PENCARIAN */}
         <div className="max-h-80 overflow-y-auto p-2 space-y-1">
           {filteredCalculators.length === 0 ? (
-            <div className="p-8 text-center text-slate-500">
+            <div className={`p-8 text-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
               Tidak ada kalkulator yang cocok dengan kata kunci &quot;{searchQuery}&quot;.
             </div>
           ) : (
@@ -144,10 +160,16 @@ export default function CommandPaletteModal({ isOpen, onClose, onSelectCalculato
                     <span className="text-base">{calc.icon}</span>
                     <div>
                       <span className="font-bold block">{calc.name}</span>
-                      <span className={`text-[10px] ${isSelected ? 'text-blue-200' : 'opacity-60'}`}>{calc.category}</span>
+                      <span className={`text-[10px] ${isSelected ? 'text-blue-200' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {calc.category}
+                      </span>
                     </div>
                   </div>
-                  <span className={`text-[10px] font-mono px-2 py-1 rounded ${isSelected ? 'bg-blue-700 text-white' : 'opacity-40 border'}`}>
+                  <span className={`text-[10px] font-mono px-2 py-1 rounded ${
+                    isSelected 
+                      ? 'bg-blue-700 text-white' 
+                      : isDark ? 'bg-slate-900 border border-slate-800 text-slate-400' : 'bg-slate-100 border border-slate-300 text-slate-600'
+                  }`}>
                     Jump ↵
                   </span>
                 </div>
@@ -157,9 +179,11 @@ export default function CommandPaletteModal({ isOpen, onClose, onSelectCalculato
         </div>
 
         {/* FOOTER PANDUAN & PASIEN AKTIF */}
-        <div className={`p-3 border-t flex justify-between items-center text-[10px] opacity-70 ${isDark ? 'border-slate-800 bg-slate-900/30 text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+        <div className={`p-3 border-t flex justify-between items-center text-[10px] ${
+          isDark ? 'border-slate-800 bg-slate-900/30 text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-600'
+        }`}>
           <span>
-            👤 Pasien: <strong>{patient.patientName || 'Umum'}</strong> ({patient.patientId || 'RM: -'})
+            👤 Pasien: <strong>{patient?.patientName || 'Umum'}</strong> ({patient?.patientId ? `RM: ${patient.patientId}` : 'RM: -'})
           </span>
           <span>Gunakan <strong>↑↓</strong> lalu <strong>Enter</strong></span>
         </div>

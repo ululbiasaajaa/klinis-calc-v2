@@ -26,7 +26,6 @@ export default function SoapGenerator({ currentInputs, activeTab }) {
 
   // AUTO-SYNC CERDAS & AMAN DARI BLANK DATA
   useEffect(() => {
-    // Ambil data dari store, jika kosong/dash, kasih nilai default klinis yang masuk akal
     const pName = patient.patientName && patient.patientName !== '-' ? patient.patientName : 'Ny./Tn. Pasien Klinis';
     const pId = patient.patientId && patient.patientId !== '-' ? patient.patientId : 'RM-009988';
     const pAge = patient.age || '45';
@@ -39,7 +38,7 @@ export default function SoapGenerator({ currentInputs, activeTab }) {
     // 1. [S] SUBJECTIVE
     const subjectiveText = `Pasien ${pGender}, usia ${pAge} tahun, dengan berat badan ${weight} kg dan tinggi ${height} cm. Keluhan utama / Diagnosa awal: ${patient.primaryDiagnosis || 'Evaluasi farmakoterapi dan pemantauan klinis rutin.'}`;
 
-    // 2. [O] OBJECTIVE (Bedah total parameter dari modul aktif manapun)
+    // 2. [O] OBJECTIVE
     let activeModuleParams = '';
     if (currentInputs && Object.keys(currentInputs).length > 0) {
       activeModuleParams = Object.entries(currentInputs)
@@ -53,11 +52,10 @@ export default function SoapGenerator({ currentInputs, activeTab }) {
 
     const objectiveText = `[Parameter Klinis & Lab Utama]\n• Berat Badan / Tinggi: ${weight} kg / ${height} cm\n• Serum Creatinine: ${scr} mg/dL\n• Estimasi Fungsi Ginjal (eGFR): ${egfr} mL/min/1.73m²\n\n[Data Input Modul Aktif: (${activeTab.toUpperCase()})]\n${activeModuleParams}`;
 
-    // 3. [A] ASSESSMENT & [P] PLAN BERDASARKAN DINAMIKA MODUL
+    // 3. [A] ASSESSMENT & [P] PLAN
     let assessmentText = '';
     let planText = '';
 
-    // Jika tab aktif adalah 'soap', cek apakah ada input modul sebelumnya atau fallback ke umum
     const effectiveTab = activeTab === 'soap' ? (currentInputs?.activeTab || 'general') : activeTab;
 
     switch (effectiveTab) {
@@ -152,11 +150,11 @@ export default function SoapGenerator({ currentInputs, activeTab }) {
     element.style.display = 'block';
 
     const opt = {
-      margin:      0.4,
-      filename:    `Catatan-SOAP-${patient.patientName || 'Pasien'}.pdf`,
-      image:       { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF:       { unit: 'in', format: 'a4', orientation: 'portrait' }
+      margin:       0.4,
+      filename:     `Catatan-SOAP-${patient.patientName || 'Pasien'}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2 },
+      jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
 
     try {
@@ -167,7 +165,6 @@ export default function SoapGenerator({ currentInputs, activeTab }) {
       const base64Data = pdfBase64.split(',')[1];
       const fileName = `Catatan-SOAP-${patient.patientName || 'Pasien'}-${Date.now()}.pdf`;
 
-      // Gunakan Directory.Cache agar aman di Android modern & bisa langsung di-share/download
       const savedFile = await Filesystem.writeFile({
         path: fileName,
         data: base64Data,
@@ -177,7 +174,6 @@ export default function SoapGenerator({ currentInputs, activeTab }) {
 
       setIsDownloading(false);
 
-      // Panggil Share Sheet agar user bisa memilih "Simpan ke Unduhan" atau kirim file
       await Share.share({
         title: 'Catatan SOAP Medis',
         text: `Berikut file PDF catatan SOAP untuk pasien ${patient.patientName || 'Pasien'}.`,
@@ -198,24 +194,28 @@ export default function SoapGenerator({ currentInputs, activeTab }) {
       isDark ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
     }`}>
       {/* Header & Action Buttons */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-slate-700/50">
+      <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b ${
+        isDark ? 'border-slate-700/50' : 'border-slate-200'
+      }`}>
         <div>
           <h2 className="text-lg font-bold flex items-center gap-2">
             <span>📋</span> Automated SOAP Generator
           </h2>
-          <p className="text-xs opacity-70 mt-0.5">
+          <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             Auto-Sync Cerdas Aktif • Referensi Modul: <span className="font-bold text-blue-500 uppercase">{activeTab}</span>
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={handleCopySoap}
             className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
           >
             {copied ? '✅ Disalin!' : '📋 Salin Teks'}
           </button>
           <button
+            type="button"
             onClick={handleDownloadSoapPdf}
             disabled={isDownloading}
             className="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
@@ -229,10 +229,11 @@ export default function SoapGenerator({ currentInputs, activeTab }) {
       <div className="space-y-4 text-xs">
         {/* Subjective */}
         <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-          <label className="block font-bold text-blue-500 mb-1.5 uppercase tracking-wide">
+          <label htmlFor="soap-subj-input" className="block font-bold text-blue-500 mb-1.5 uppercase tracking-wide cursor-pointer">
             [S] Subjective (Subjektif)
           </label>
           <textarea
+            id="soap-subj-input"
             rows={2}
             value={soapData.subjective}
             onChange={(e) => handleChange('subjective', e.target.value)}
@@ -244,10 +245,11 @@ export default function SoapGenerator({ currentInputs, activeTab }) {
 
         {/* Objective */}
         <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-          <label className="block font-bold text-amber-500 mb-1.5 uppercase tracking-wide">
+          <label htmlFor="soap-obj-input" className="block font-bold text-amber-500 mb-1.5 uppercase tracking-wide cursor-pointer">
             [O] Objective (Parameter & Input Modul {activeTab.toUpperCase()})
           </label>
           <textarea
+            id="soap-obj-input"
             rows={6}
             value={soapData.objective}
             onChange={(e) => handleChange('objective', e.target.value)}
@@ -259,10 +261,11 @@ export default function SoapGenerator({ currentInputs, activeTab }) {
 
         {/* Assessment */}
         <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-          <label className="block font-bold text-purple-500 mb-1.5 uppercase tracking-wide">
+          <label htmlFor="soap-assess-input" className="block font-bold text-purple-500 mb-1.5 uppercase tracking-wide cursor-pointer">
             [A] Assessment (Analisis Klinis Spesifik)
           </label>
           <textarea
+            id="soap-assess-input"
             rows={4}
             value={soapData.assessment}
             onChange={(e) => handleChange('assessment', e.target.value)}
@@ -274,10 +277,11 @@ export default function SoapGenerator({ currentInputs, activeTab }) {
 
         {/* Plan */}
         <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-          <label className="block font-bold text-emerald-500 mb-1.5 uppercase tracking-wide">
+          <label htmlFor="soap-plan-input" className="block font-bold text-emerald-500 mb-1.5 uppercase tracking-wide cursor-pointer">
             [P] Plan (Rekomendasi Terapi & Monitoring)
           </label>
           <textarea
+            id="soap-plan-input"
             rows={6}
             value={soapData.plan}
             onChange={(e) => handleChange('plan', e.target.value)}
@@ -288,7 +292,7 @@ export default function SoapGenerator({ currentInputs, activeTab }) {
         </div>
       </div>
 
-      <div className="mt-4 text-[10px] opacity-60 text-center">
+      <div className={`mt-4 text-[10px] text-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
         💡 Otak AI SOAP kini secara otomatis mendeteksi nilai dari kalkulator manapun meskipun data store pasien utama kosong.
       </div>
 

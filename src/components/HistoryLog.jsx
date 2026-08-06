@@ -1,10 +1,13 @@
 import React, { useRef } from 'react';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { useTheme } from '../context/ThemeContext';
 import { usePatientStore } from '../store/usePatientStore';
 
-export default function HistoryLog({ history, handleClearHistory, setHistory }) {
+export default function HistoryLog({ history = [], handleClearHistory, setHistory }) {
   const fileInputRef = useRef(null);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   // MENGAMBIL ENCOUNTER & STATUS STORE V3
   const { activeEncounter } = usePatientStore();
@@ -111,19 +114,27 @@ export default function HistoryLog({ history, handleClearHistory, setHistory }) 
           }
         } catch (error) {
           alert('❌ Gagal membaca file JSON!');
+        } finally {
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
         }
       };
     }
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 pb-3 border-b border-slate-800">
+    <div className={`p-6 rounded-2xl border shadow-xl transition-colors ${
+      isDark ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+    }`}>
+      <div className={`flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 pb-3 border-b ${
+        isDark ? 'border-slate-800' : 'border-slate-200'
+      }`}>
         <div>
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
+          <h3 className={`text-sm font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
             <span>📜</span> Riwayat Kalkulasi Pasien (History Log v3)
           </h3>
-          <p className="text-slate-400 text-xs mt-0.5">
+          <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             Tersimpan lokal & tersinkronisasi dengan Clinical Encounter active.
           </p>
         </div>
@@ -131,32 +142,49 @@ export default function HistoryLog({ history, handleClearHistory, setHistory }) 
         {/* CONTROLS BUTTONS */}
         <div className="flex flex-wrap items-center gap-2">
           <input
+            id="history-json-input"
             type="file"
             ref={fileInputRef}
             onChange={handleImportJSON}
             accept=".json"
             className="hidden"
+            aria-label="Import File JSON Riwayat"
           />
 
           <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer border ${
+              isDark
+                ? 'bg-slate-800 hover:bg-slate-700 text-blue-400 border-slate-700'
+                : 'bg-slate-100 hover:bg-slate-200 text-blue-700 border-slate-300'
+            }`}
             title="Upload Backup File JSON"
           >
             <span>📂</span> Import JSON
           </button>
 
           <button
+            type="button"
             onClick={handleExportJSON}
-            className="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer border ${
+              isDark
+                ? 'bg-slate-800 hover:bg-slate-700 text-emerald-400 border-slate-700'
+                : 'bg-slate-100 hover:bg-slate-200 text-emerald-700 border-slate-300'
+            }`}
             title="Download Backup JSON"
           >
             <span>💾</span> JSON
           </button>
 
           <button
+            type="button"
             onClick={handleExportCSV}
-            className="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer border ${
+              isDark
+                ? 'bg-slate-800 hover:bg-slate-700 text-amber-400 border-slate-700'
+                : 'bg-slate-100 hover:bg-slate-200 text-amber-700 border-slate-300'
+            }`}
             title="Download CSV / Excel"
           >
             <span>📊</span> CSV
@@ -164,8 +192,13 @@ export default function HistoryLog({ history, handleClearHistory, setHistory }) 
 
           {history.length > 0 && (
             <button
+              type="button"
               onClick={handleClearHistory}
-              className="bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800/60 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                isDark
+                  ? 'bg-red-950/40 hover:bg-red-900/60 text-red-400 border-red-800/60'
+                  : 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
+              }`}
             >
               🗑️ Hapus
             </button>
@@ -175,7 +208,11 @@ export default function HistoryLog({ history, handleClearHistory, setHistory }) 
 
       {/* LIST HISTORY */}
       {history.length === 0 ? (
-        <div className="text-center py-8 text-xs text-slate-500 bg-slate-950/40 rounded-xl border border-slate-800/60">
+        <div className={`text-center py-8 text-xs rounded-xl border ${
+          isDark
+            ? 'text-slate-500 bg-slate-950/40 border-slate-800/60'
+            : 'text-slate-500 bg-slate-50 border-slate-200'
+        }`}>
           Belum ada riwayat kalkulasi. Lakukan perhitungan lalu klik tombol <strong>"Salin & Simpan Riwayat"</strong>.
         </div>
       ) : (
@@ -183,21 +220,37 @@ export default function HistoryLog({ history, handleClearHistory, setHistory }) 
           {history.map((item) => (
             <div
               key={item.id}
-              className="bg-slate-950 p-4 rounded-xl border border-slate-800 hover:border-slate-700 transition-all text-xs"
+              className={`p-4 rounded-xl border transition-all text-xs ${
+                isDark
+                  ? 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                  : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+              }`}
             >
               <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-white bg-slate-800 px-2 py-0.5 rounded text-[11px]">
+                  <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                    isDark ? 'text-white bg-slate-800' : 'text-slate-800 bg-slate-200'
+                  }`}>
                     👤 {item.patient}
                   </span>
-                  <span className="text-slate-400 text-[11px]">RM: {item.rm}</span>
+                  <span className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    RM: {item.rm}
+                  </span>
                 </div>
-                <span className="text-[10px] text-slate-500 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                <span className={`text-[10px] px-2 py-0.5 rounded border ${
+                  isDark
+                    ? 'text-slate-500 bg-slate-900 border-slate-800'
+                    : 'text-slate-600 bg-white border-slate-200'
+                }`}>
                   {item.date} • {item.time}
                 </span>
               </div>
 
-              <div className="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800/80 text-slate-300 font-mono text-[11px] whitespace-pre-wrap leading-relaxed">
+              <div className={`p-2.5 rounded-lg border font-mono text-[11px] whitespace-pre-wrap leading-relaxed ${
+                isDark
+                  ? 'bg-slate-900/80 border-slate-800/80 text-slate-300'
+                  : 'bg-white border-slate-200 text-slate-800'
+              }`}>
                 {item.summary}
               </div>
             </div>

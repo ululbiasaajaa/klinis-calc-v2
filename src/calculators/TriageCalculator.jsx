@@ -115,7 +115,7 @@ export default function TriageCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
-      {patient.patientName && (
+      {patient?.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Asesmen triase & kegawatdaruratan IGD.</span>
           <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
@@ -125,7 +125,7 @@ export default function TriageCalculator() {
       {/* HEADER INFORMASI */}
       <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
         <h3 className="font-bold text-blue-500 mb-2">🚑 Asisten Triase IGD (Australasian Triage Scale - ATS)</h3>
-        <p className="text-slate-400 text-[11px] mb-4">
+        <p className={`text-[11px] mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
           Sistem pemilahan pasien gawat darurat di IGD berdasarkan tingkat keparahan kondisi klinis untuk menentukan prioritas penanganan medis.
         </p>
 
@@ -155,14 +155,15 @@ export default function TriageCalculator() {
         </div>
       </div>
 
-
       {/* DETAIL KATEGORI TERPILIH */}
       <div className={`p-5 rounded-2xl border space-y-4 ${
         isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
       }`}>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b pb-3 border-slate-700/50">
+        <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b pb-3 ${
+          isDark ? 'border-slate-700/50' : 'border-slate-200'
+        }`}>
           <div>
-            <span className="text-[10px] text-slate-400 uppercase font-bold">Klasifikasi Terpilih</span>
+            <span className={`text-[10px] uppercase font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Klasifikasi Terpilih</span>
             <h4 className={`text-base font-extrabold ${activeTriage.badgeColor.split(' ')[0]}`}>{activeTriage.level}</h4>
           </div>
           <div className={`px-3 py-1.5 rounded-xl border font-bold text-xs ${activeTriage.badgeColor}`}>
@@ -176,7 +177,7 @@ export default function TriageCalculator() {
 
         <div>
           <span className="font-bold text-blue-500 block mb-2">📌 Contoh Kasus / Kriteria Klinis:</span>
-          <ul className="list-disc list-inside space-y-1.5 text-slate-400 text-[11px]">
+          <ul className={`list-disc list-inside space-y-1.5 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             {activeTriage.examples.map((ex, idx) => (
               <li key={idx}>{ex}</li>
             ))}
@@ -199,7 +200,11 @@ export default function TriageCalculator() {
         <button
           type="button"
           onClick={handleSaveToTracker}
-          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+          className={`font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2 border ${
+            isDark
+              ? 'bg-slate-800 hover:bg-slate-700 text-blue-400 border-slate-700'
+              : 'bg-slate-100 hover:bg-slate-200 text-blue-700 border-slate-300'
+          }`}
         >
           📈 Simpan Triase ke Outcome Tracker
         </button>

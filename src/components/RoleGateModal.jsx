@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -27,21 +27,39 @@ export default function RoleGateModal({ onAccessGranted }) {
     }
   };
 
+  // Keyboard shortcut: Tekan Enter untuk masuk jika persetujuan sudah dicentang
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter' && agreed) {
+        handleEnter();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [agreed, selectedRole]);
+
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className={`border p-6 md:p-8 rounded-3xl max-w-lg w-full shadow-2xl relative space-y-6 ${
-        isDark ? 'bg-slate-900 border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
-      }`}>
+    <div 
+      className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="rolegate-modal-title"
+    >
+      <div 
+        className={`border p-6 md:p-8 rounded-3xl max-w-lg w-full shadow-2xl relative space-y-6 transition-all ${
+          isDark ? 'bg-slate-900 border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+        }`}
+      >
         
         {/* HEADER BRAND */}
         <div className="text-center space-y-2">
           <div className="inline-flex p-3 rounded-2xl bg-blue-600/10 text-blue-500 text-3xl mb-1">
             🩺
           </div>
-          <h2 className="text-xl font-extrabold tracking-tight">
+          <h2 id="rolegate-modal-title" className="text-xl font-extrabold tracking-tight">
             Clinical Suite Enterprise v3
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             {lang === 'id' 
               ? 'Sistem Pendukung Keputusan Klinis & Single Source Patient Context' 
               : 'Clinical Decision Support & Integrated Shared Patient Context'}
@@ -50,7 +68,7 @@ export default function RoleGateModal({ onAccessGranted }) {
 
         {/* ROLE SELECTOR */}
         <div className="space-y-2">
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          <label className={`block text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             {lang === 'id' ? '1. Pilih Peran Profesional Anda:' : '1. Select Your Professional Role:'}
           </label>
           <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto pr-1">
@@ -101,9 +119,9 @@ export default function RoleGateModal({ onAccessGranted }) {
             id="agreeCheck"
             checked={agreed}
             onChange={(e) => setAgreed(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            className="mt-0.5 h-4 w-4 rounded border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
           />
-          <label htmlFor="agreeCheck" className="text-xs font-medium cursor-pointer select-none">
+          <label htmlFor="agreeCheck" className={`text-xs font-medium cursor-pointer select-none ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
             {lang === 'id'
               ? 'Saya menyatakan bahwa saya adalah tenaga profesional / praktisi medis dan menyetujui ketentuan penggunaan klinis.'
               : 'I confirm that I am a healthcare professional/practitioner and agree to the clinical terms of use.'}
@@ -118,7 +136,9 @@ export default function RoleGateModal({ onAccessGranted }) {
           className={`w-full py-3.5 px-4 rounded-2xl font-bold text-xs transition-all shadow-lg ${
             agreed
               ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30 cursor-pointer'
-              : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50'
+              : isDark 
+                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50' 
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
           }`}
         >
           {lang === 'id' ? '🚀 Masuk ke Sesi Klinis Enterprise v3' : '🚀 Enter Clinical Session v3'}

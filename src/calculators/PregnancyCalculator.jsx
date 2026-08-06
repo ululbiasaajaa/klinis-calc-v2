@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
 import { usePatientStore } from '../store/usePatientStore';
 
 export default function PregnancyCalculator() {
   const { theme } = useTheme();
-  const { lang } = useLanguage();
   const isDark = theme === 'dark';
 
   // AMBIL DATA PASIEN GLOBAL DAN DISPATCHERS V3
@@ -24,10 +22,8 @@ export default function PregnancyCalculator() {
 
   // Auto-sync data dari Patient Context Bar jika tersedia
   useEffect(() => {
-    if (patient) {
-      if (patient.hpht) {
-        setHpht(patient.hpht);
-      }
+    if (patient && patient.hpht) {
+      setHpht(patient.hpht);
     }
   }, [patient]);
 
@@ -67,7 +63,7 @@ export default function PregnancyCalculator() {
     }
 
     const formatDate = (dateObj) => {
-      return dateObj.toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US', {
+      return dateObj.toLocaleDateString('id-ID', {
         day: 'numeric',
         month: 'long',
         year: 'numeric'
@@ -127,7 +123,7 @@ export default function PregnancyCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
-      {patient.patientName && (
+      {patient?.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Kalkulator HPL & Berat Janin Terintegrasi.</span>
           <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
@@ -137,17 +133,18 @@ export default function PregnancyCalculator() {
       <div className={`p-4 rounded-xl border ${
         isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-blue-50 border-blue-200 text-slate-700'
       }`}>
-        <p className="font-bold mb-1 text-blue-400">🤰 Kalkulator Usia Kehamilan, HPL & Estimasi Berat Janin (Johnson v3):</p>
+        <p className="font-bold mb-1 text-blue-500">🤰 Kalkulator Usia Kehamilan, HPL & Estimasi Berat Janin (Johnson v3):</p>
         <p className="leading-relaxed">
           Modul komprehensif Poli Kandungan (KIA) untuk menghitung Hari Perkiraan Lahir (Naegle), Usia Gestasi, serta Estimasi Berat Janin (EBJ) berdasarkan Tinggi Fundus Uteri (TFU).
         </p>
       </div>
 
       <div>
-        <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+        <label htmlFor="hpht-date-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
           Tanggal HPHT (Hari Pertama Haid Terakhir):
         </label>
         <input
+          id="hpht-date-input"
           type="date"
           value={hpht}
           onChange={(e) => setHpht(e.target.value)}
@@ -204,10 +201,11 @@ export default function PregnancyCalculator() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                <label htmlFor="tfu-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                   Tinggi Fundus Uteri (TFU dalam cm):
                 </label>
                 <input
+                  id="tfu-input"
                   type="number"
                   value={tfu}
                   onChange={(e) => setTfu(e.target.value)}
@@ -219,13 +217,14 @@ export default function PregnancyCalculator() {
               </div>
 
               <div>
-                <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                <label htmlFor="pap-position-select" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                   Posisi Kepala Janin Terhadap PAP (Pintu Atas Panggul):
                 </label>
                 <select
+                  id="pap-position-select"
                   value={isPap}
                   onChange={(e) => setIsPap(e.target.value)}
-                  className={`w-full p-3 rounded-xl border outline-none font-bold ${
+                  className={`w-full p-3 rounded-xl border outline-none font-bold cursor-pointer ${
                     isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
                   }`}
                 >
@@ -255,7 +254,11 @@ export default function PregnancyCalculator() {
             <button
               type="button"
               onClick={handleSaveToTracker}
-              className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+              className={`font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2 border ${
+                isDark
+                  ? 'bg-slate-800 hover:bg-slate-700 text-blue-400 border-slate-700'
+                  : 'bg-slate-100 hover:bg-slate-200 text-blue-700 border-slate-300'
+              }`}
             >
               📈 Simpan Data HPL & EBJ ke Outcome Tracker
             </button>

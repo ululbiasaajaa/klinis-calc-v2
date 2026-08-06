@@ -55,9 +55,11 @@ export default function App() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const { patient, setPatient } = usePatientStore();
+  // Sinkronisasi dengan Zustand Store V3
+  const { patient, getClinicalContext, setPatientData } = usePatientStore();
   const patientName = patient.patientName;
   const patientId = patient.patientId;
+  const clinicalCtx = getClinicalContext();
 
   const [isAuthorized, setIsAuthorized] = useState(() => {
     return sessionStorage.getItem('clinical_suite_auth_role') ? true : false;
@@ -143,40 +145,35 @@ export default function App() {
     localStorage.setItem('clinical_suite_history', JSON.stringify(history));
   }, [history]);
 
-  const [pkInputs, setPkInputs] = useState({ targetConc: '', vd: '', weight: '', bioavailability: '1', clearance: '', interval: '8' });
-  const [dripInputs, setDripInputs] = useState({ dose: '', weight: '', drugMg: '', volumeMl: '100' });
-  const [renalInputs, setRenalInputs] = useState({ age: '', weight: '', scr: '', gender: 'male' });
-  const [anthroInputs, setAnthroInputs] = useState({ height: '', weight: '', gender: 'male', tbsaBurn: '' });
-  const [tdeeInputs, setTdeeInputs] = useState({ weight: '', height: '', age: '', gender: 'male', activityLevel: '1.2', goal: 'fat_loss' });
+  // Input mandiri untuk modul spesifik (PK, Drip, TDEE, Steroid, NTI)
+  const [pkInputs, setPkInputs] = useState({ targetConc: '', vd: '', bioavailability: '1', clearance: '', interval: '8' });
+  const [dripInputs, setDripInputs] = useState({ dose: '', drugMg: '', volumeMl: '100' });
+  const [tdeeInputs, setTdeeInputs] = useState({ activityLevel: '1.2', goal: 'fat_loss' });
 
   const [ntiSubTab, setNtiSubTab] = useState('phenytoin');
   const [ntiPhenytoin, setNtiPhenytoin] = useState({ phenytoinObs: '', albumin: '4.0', renalImpairment: 'no' });
-  const [ntiVanco, setNtiVanco] = useState({ weight: '', scr: '', age: '', gender: 'male', dailyDoseMg: '2000' });
+  const [ntiVanco, setNtiVanco] = useState({ dailyDoseMg: '2000' });
   const [ntiTheo, setNtiTheo] = useState({ currentLevel: '', currentDoseMg: '600' });
   const [ntiWarfarin, setNtiWarfarin] = useState({ currentInr: '', targetInrMin: '2.0', targetInrMax: '3.0' });
-  const [ntiAmino, setNtiAmino] = useState({ drugType: 'amikacin', weight: '', height: '', gender: 'male', scr: '', age: '' });
+  const [ntiAmino, setNtiAmino] = useState({ drugType: 'amikacin' });
 
   const [steroidInputs, setSteroidInputs] = useState({ sourceDrug: 'hydrocortisone', sourceDose: '20', targetDrug: 'cortisone' });
 
   const handlePk = (e) => setPkInputs({ ...pkInputs, [e.target.name]: e.target.value });
   const handleDrip = (e) => setDripInputs({ ...dripInputs, [e.target.name]: e.target.value });
-  const handleRenal = (e) => setRenalInputs({ ...renalInputs, [e.target.name]: e.target.value });
-  const handleAnthro = (e) => setAnthroInputs({ ...anthroInputs, [e.target.name]: e.target.value });
   const handleTdee = (e) => setTdeeInputs({ ...tdeeInputs, [e.target.name]: e.target.value });
 
   const handleResetForm = () => {
-    if (activeTab === 'pk') setPkInputs({ targetConc: '', vd: '', weight: '', bioavailability: '1', clearance: '', interval: '8' });
-    if (activeTab === 'drip') setDripInputs({ dose: '', weight: '', drugMg: '', volumeMl: '100' });
-    if (activeTab === 'renal') setRenalInputs({ age: '', weight: '', scr: '', gender: 'male' });
-    if (activeTab === 'anthro') setAnthroInputs({ height: '', weight: '', gender: 'male', tbsaBurn: '' });
-    if (activeTab === 'kalori') setTdeeInputs({ weight: '', height: '', age: '', gender: 'male', activityLevel: '1.2', goal: 'fat_loss' });
+    if (activeTab === 'pk') setPkInputs({ targetConc: '', vd: '', bioavailability: '1', clearance: '', interval: '8' });
+    if (activeTab === 'drip') setDripInputs({ dose: '', drugMg: '', volumeMl: '100' });
+    if (activeTab === 'kalori') setTdeeInputs({ activityLevel: '1.2', goal: 'fat_loss' });
     if (activeTab === 'steroid') setSteroidInputs({ sourceDrug: 'hydrocortisone', sourceDose: '20', targetDrug: 'cortisone' });
     if (activeTab === 'nti') {
       setNtiPhenytoin({ phenytoinObs: '', albumin: '4.0', renalImpairment: 'no' });
-      setNtiVanco({ weight: '', scr: '', age: '', gender: 'male', dailyDoseMg: '2000' });
+      setNtiVanco({ dailyDoseMg: '2000' });
       setNtiTheo({ currentLevel: '', currentDoseMg: '600' });
       setNtiWarfarin({ currentInr: '', targetInrMin: '2.0', targetInrMax: '3.0' });
-      setNtiAmino({ drugType: 'amikacin', weight: '', height: '', gender: 'male', scr: '', age: '' });
+      setNtiAmino({ drugType: 'amikacin' });
     }
     triggerToast('Formulir berhasil di-reset!', 'info');
   };
@@ -244,10 +241,16 @@ export default function App() {
     nti: { title: 'Terapi Sempit (NTI / TDM)', formula: 'Phenytoin Terkoreksi = C_obs / [(0.2 × Alb) + 0.1]', guideline: 'Pemantauan kadar obat sempit.' }
   };
 
+  // Kalkulasi menggunakan data dari Store V3
+  const weightVal = Number(patient.weightKg) || 0;
+  const heightVal = Number(patient.heightCm) || 0;
+  const ageVal = Number(patient.age) || 0;
+  const isFemale = patient.gender === 'Perempuan';
+
   const ld = (() => {
-    const { targetConc, vd, weight = 1, bioavailability = 1 } = pkInputs;
-    if (!targetConc || !vd || bioavailability <= 0) return 0;
-    return Number(((targetConc * (vd * (weight || 1))) / bioavailability).toFixed(2));
+    const { targetConc, vd, bioavailability = 1 } = pkInputs;
+    if (!targetConc || !vd || weightVal <= 0 || bioavailability <= 0) return 0;
+    return Number(((targetConc * (vd * weightVal)) / bioavailability).toFixed(2));
   })();
 
   const md = (() => {
@@ -257,58 +260,31 @@ export default function App() {
   })();
 
   const drip = (() => {
-    const { dose, weight, drugMg, volumeMl } = dripInputs;
-    if (!dose || !weight || !drugMg || !volumeMl) return 0;
+    const { dose, drugMg, volumeMl } = dripInputs;
+    if (!dose || weightVal <= 0 || !drugMg || !volumeMl) return 0;
     const conc = (drugMg * 1000) / volumeMl;
-    return Number(((dose * weight * 60) / conc).toFixed(1));
+    return Number(((dose * weightVal * 60) / conc).toFixed(1));
   })();
 
-  const clcr = (() => {
-    const { age, weight, scr, gender } = renalInputs;
-    if (!age || !weight || !scr || scr <= 0) return 0;
-    let res = ((140 - age) * weight) / (72 * scr);
-    if (gender === 'female') res *= 0.85;
-    return Number(res.toFixed(1));
-  })();
+  const clcr = clinicalCtx.clcr;
+  const egfr = clinicalCtx.egfr;
+  const bsa = clinicalCtx.bsa;
+  const bmi = clinicalCtx.bmi;
+  const ibw = clinicalCtx.ibw;
 
-  const egfr = (() => {
-    const { age, scr, gender } = renalInputs;
-    if (!age || !scr || scr <= 0) return 0;
-    const kappa = gender === 'female' ? 0.7 : 0.9;
-    const alpha = gender === 'female' ? -0.241 : -0.302;
-    const genderFactor = gender === 'female' ? 1.012 : 1.0;
-    const res = 142 * Math.pow(Math.min(scr / kappa, 1), alpha) * Math.pow(Math.max(scr / kappa, 1), -1.2) * Math.pow(0.9938, age) * genderFactor;
-    return Number(res.toFixed(1));
-  })();
-
-  const bsa = (() => {
-    const { height, weight } = anthroInputs;
-    if (!height || !weight) return 0;
-    return Number(Math.sqrt((height * weight) / 3600).toFixed(2));
-  })();
-
-  const { bmi, ibw, bmiCategory } = (() => {
-    const { height, weight, gender } = anthroInputs;
-    if (!height || !weight) return { bmi: 0, ibw: 0, bmiCategory: '-' };
-    const hM = height / 100;
-    const bmiVal = weight / (hM * hM);
-    const hInches = height / 2.54;
-    const ibwVal = hInches > 60 ? (gender === 'female' ? 45.5 : 50) + 2.3 * (hInches - 60) : (gender === 'female' ? 45.5 : 50);
-
-    let cat = '';
-    if (bmiVal < 18.5) cat = 'Underweight (Berat Badan Kurang)';
-    else if (bmiVal >= 18.5 && bmiVal <= 22.9) cat = 'Normal / Ideal';
-    else if (bmiVal >= 23.0 && bmiVal <= 24.9) cat = 'Overweight (Kelebihan BB)';
-    else if (bmiVal >= 25.0) cat = 'Obesitas';
-
-    return { bmi: Number(bmiVal.toFixed(1)), ibw: Number(ibwVal.toFixed(1)), bmiCategory: cat };
+  const bmiCategory = (() => {
+    if (bmi <= 0) return '-';
+    if (bmi < 18.5) return 'Underweight (Berat Badan Kurang)';
+    if (bmi >= 18.5 && bmi <= 22.9) return 'Normal / Ideal';
+    if (bmi >= 23.0 && bmi <= 24.9) return 'Overweight (Kelebihan BB)';
+    return 'Obesitas';
   })();
 
   const dietPlan = (() => {
-    const { weight, height, age, gender, activityLevel, goal } = tdeeInputs;
-    if (!weight || !height || !age) return { bmr: 0, tdee: 0, targetCal: 0, protein: 0, carbs: 0, fat: 0, advice: '' };
+    const { activityLevel, goal } = tdeeInputs;
+    if (weightVal <= 0 || heightVal <= 0 || ageVal <= 0) return { bmr: 0, tdee: 0, targetCal: 0, protein: 0, carbs: 0, fat: 0, advice: '' };
     
-    let bmrVal = (10 * weight) + (6.25 * height) - (5 * age) + (gender === 'female' ? -161 : 5);
+    let bmrVal = (10 * weightVal) + (6.25 * heightVal) - (5 * ageVal) + (isFemale ? -161 : 5);
     let tdeeVal = bmrVal * (parseFloat(activityLevel) || 1.2);
     let targetCal = tdeeVal;
     let advice = '';
@@ -336,13 +312,11 @@ export default function App() {
   })();
 
   const vancoAuc = (() => {
-    const { weight, scr, age, gender, dailyDoseMg } = ntiVanco;
-    if (!weight || !scr || !age || !dailyDoseMg || scr <= 0) return 0;
-    let clcrVal = ((140 - age) * weight) / (72 * scr);
-    if (gender === 'female') clcrVal *= 0.85;
-    const estimatedCl = clcrVal * 0.06;
+    const { dailyDoseMg } = ntiVanco;
+    if (weightVal <= 0 || ageVal <= 0 || !dailyDoseMg || clcr <= 0) return 0;
+    const estimatedCl = clcr * 0.06;
     if (estimatedCl <= 0) return 0;
-    const auc = (dailyDoseMg / estimatedCl).toFixed(1);
+    const auc = (Number(dailyDoseMg) / estimatedCl).toFixed(1);
     return Number(auc);
   })();
 
@@ -373,27 +347,27 @@ export default function App() {
     switch (activeTab) {
       case 'pk': return { activeTab: 'pk', ...pkInputs };
       case 'drip': return { activeTab: 'drip', ...dripInputs };
-      case 'renal': return { activeTab: 'renal', ...renalInputs };
-      case 'anthro': return { activeTab: 'anthro', ...anthroInputs };
+      case 'renal': return { activeTab: 'renal', age: ageVal, weight: weightVal, scr: patient.serumCreatinine, gender: patient.gender };
+      case 'anthro': return { activeTab: 'anthro', height: heightVal, weight: weightVal, gender: patient.gender };
       case 'kalori': return { activeTab: 'kalori', ...tdeeInputs };
       case 'steroid': return { activeTab: 'steroid', ...steroidInputs };
-      case 'abx_dose': return { activeTab: 'abx_dose', ...renalInputs };
-      case 'renal_dose': return { activeTab: 'renal_dose', ...renalInputs };
-      case 'hd_dose': return { activeTab: 'hd_dose', ...renalInputs };
-      case 'peds_geri': return { activeTab: 'peds_geri', age: renalInputs.age, weight: renalInputs.weight };
+      case 'abx_dose': return { activeTab: 'abx_dose', age: ageVal, weight: weightVal, scr: patient.serumCreatinine };
+      case 'renal_dose': return { activeTab: 'renal_dose', age: ageVal, weight: weightVal, scr: patient.serumCreatinine };
+      case 'hd_dose': return { activeTab: 'hd_dose', age: ageVal, weight: weightVal, scr: patient.serumCreatinine };
+      case 'peds_geri': return { activeTab: 'peds_geri', age: ageVal, weight: weightVal };
       case 'stopp_start': return { activeTab: 'stopp_start', role: userRole };
-      case 'crrt': return { activeTab: 'crrt', ...renalInputs };
+      case 'crrt': return { activeTab: 'crrt', age: ageVal, weight: weightVal, scr: patient.serumCreatinine };
       case 'gout': return { activeTab: 'gout' };
       case 'lipid': return { activeTab: 'lipid' };
       case 'toxicology': return { activeTab: 'toxicology' };
-      case 'framingham': return { activeTab: 'framingham', age: renalInputs.age, gender: renalInputs.gender };
-      case 'fluid': return { activeTab: 'fluid', weight: anthroInputs.weight, height: anthroInputs.height };
+      case 'framingham': return { activeTab: 'framingham', age: ageVal, gender: patient.gender };
+      case 'fluid': return { activeTab: 'fluid', weight: weightVal, height: heightVal };
       case 'diabetes': return { activeTab: 'diabetes' };
       case 'hepar': return { activeTab: 'hepar' };
       case 'pregnancy': return { activeTab: 'pregnancy' };
       case 'nti': return { activeTab: 'nti', ...(ntiSubTab === 'phenytoin' ? ntiPhenytoin : ntiVanco) };
       case 'tdm_chart': return { activeTab: 'tdm_chart', ...ntiVanco };
-      default: return { activeTab, ...pkInputs, ...renalInputs, ...anthroInputs, ...tdeeInputs };
+      default: return { activeTab, ...pkInputs, ...patient };
     }
   };
 
@@ -455,7 +429,7 @@ export default function App() {
 
       await Share.share({
         title: 'Laporan Klinis Pasien',
-        text: `Berikut file PDF laporan klinis untuk pasien ${patientName || '-'}.`,
+        text: `Voici file PDF laporan klinis untuk pasien ${patientName || '-'}.`,
         url: savedFile.uri,
         dialogTitle: 'Simpan / Bagikan Laporan PDF'
       });
@@ -518,8 +492,7 @@ export default function App() {
         isOpen={isPatientDirOpen}
         onClose={() => setIsPatientDirOpen(false)}
         onSelectPatient={(name, rm) => {
-          setPatient({
-            ...patient,
+          setPatientData({
             patientName: name,
             patientId: rm
           });
@@ -709,7 +682,6 @@ export default function App() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Target Conc (mg/L)</label><input type="number" name="targetConc" value={pkInputs.targetConc} onChange={handlePk} placeholder="e.g. 15" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
                   <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Vd (L/kg)</label><input type="number" name="vd" value={pkInputs.vd} onChange={handlePk} placeholder="e.g. 0.7" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={pkInputs.weight} onChange={handlePk} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
                   <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Clearance (L/jam)</label><input type="number" name="clearance" value={pkInputs.clearance} onChange={handlePk} placeholder="e.g. 3.0" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
                   <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Interval (Jam)</label><input type="number" name="interval" value={pkInputs.interval} onChange={handlePk} placeholder="e.g. 8" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
                 </div>
@@ -727,7 +699,6 @@ export default function App() {
               <div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Dosis Target (mcg/kg/min)</label><input type="number" name="dose" value={dripInputs.dose} onChange={handleDrip} placeholder="e.g. 5" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={dripInputs.weight} onChange={handleDrip} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
                   <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jumlah Obat Dalam Vial/Ampul (mg)</label><input type="number" name="drugMg" value={dripInputs.drugMg} onChange={handleDrip} placeholder="e.g. 250" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
                   <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Volume Pelarut Syringe Pump (mL)</label><input type="number" name="volumeMl" value={dripInputs.volumeMl} onChange={handleDrip} placeholder="e.g. 50" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
                 </div>
@@ -792,7 +763,7 @@ export default function App() {
                 warfarinRec={{ status: 'Stable', action: 'Lanjutkan regimen' }}
                 ntiAmino={ntiAmino}
                 setNtiAmino={setNtiAmino}
-                aminoDose={{ ibw: 55, doseMg: 400, dosingWeight: 'IBW', interval: '24 jam' }}
+                aminoDose={{ ibw: ibw, doseMg: 400, dosingWeight: 'IBW', interval: '24 jam' }}
               />
             )}
 
@@ -801,13 +772,6 @@ export default function App() {
 
             {activeTab === 'renal' && (
               <div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Usia (Tahun)</label><input type="number" name="age" value={renalInputs.age} onChange={handleRenal} placeholder="e.g. 55" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={renalInputs.weight} onChange={handleRenal} placeholder="e.g. 65" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Serum Creatinine (mg/dL)</label><input type="number" name="scr" value={renalInputs.scr} onChange={handleRenal} placeholder="e.g. 1.2" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={renalInputs.gender} onChange={handleRenal} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
-                </div>
-
                 <div className={`p-4 rounded-xl flex justify-between mb-4 border ${
                   isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
                 }`}>
@@ -830,12 +794,6 @@ export default function App() {
 
             {activeTab === 'anthro' && (
               <div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Tinggi Badan (cm)</label><input type="number" name="height" value={anthroInputs.height} onChange={handleAnthro} placeholder="e.g. 165" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={anthroInputs.weight} onChange={handleAnthro} placeholder="e.g. 60" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={anthroInputs.gender} onChange={handleAnthro} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
-                </div>
-
                 <div className={`grid grid-cols-3 gap-2 p-4 rounded-2xl text-center mb-4 border ${
                   isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
                 }`}>
@@ -849,10 +807,6 @@ export default function App() {
             {activeTab === 'kalori' && (
               <div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Usia (Tahun)</label><input type="number" name="age" value={tdeeInputs.age} onChange={handleTdee} placeholder="e.g. 24" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>TB (cm)</label><input type="number" name="height" value={tdeeInputs.height} onChange={handleTdee} placeholder="e.g. 170" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>BB Pasien (kg)</label><input type="number" name="weight" value={tdeeInputs.weight} onChange={handleTdee} placeholder="e.g. 70" className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`} /></div>
-                  <div><label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jenis Kelamin</label><select name="gender" value={tdeeInputs.gender} onChange={handleTdee} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
                   <div>
                     <label className={`block text-xs mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Tingkat Aktivitas Harian</label>
                     <select name="activityLevel" value={tdeeInputs.activityLevel} onChange={handleTdee} className={`w-full p-3 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}>
@@ -888,6 +842,7 @@ export default function App() {
                 isDark ? 'border-slate-800' : 'border-slate-200'
               }`}>
                 <button
+                  type="button"
                   onClick={handleCopySummary}
                   className={`w-full sm:w-auto font-bold py-3 px-6 rounded-xl border transition-all flex items-center justify-center gap-2 text-xs cursor-pointer ${
                     isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-200 hover:bg-slate-300 text-slate-800 border-slate-300'
@@ -897,6 +852,7 @@ export default function App() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={handleDownloadPDF}
                   className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs cursor-pointer"
                 >
@@ -927,7 +883,7 @@ export default function App() {
           <div className={`border p-6 rounded-2xl max-w-md w-full shadow-2xl relative ${
             isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'
           }`}>
-            <button onClick={() => setShowInfo(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold">✖</button>
+            <button type="button" onClick={() => setShowInfo(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer">✖</button>
             <div className="flex items-center gap-2 mb-4 text-blue-500">
               <span className="text-2xl">📖</span>
               <h3 className={`font-bold text-base ${isDark ? 'text-white' : 'text-slate-900'}`}>{formulaInfo[activeTab]?.title || 'Informasi Rumus'}</h3>
@@ -946,7 +902,7 @@ export default function App() {
                 </p>
               </div>
             </div>
-            <button onClick={() => setShowInfo(false)} className="mt-6 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer">
+            <button type="button" onClick={() => setShowInfo(false)} className="mt-6 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer">
               Tutup & Kembali
             </button>
           </div>
@@ -1020,14 +976,14 @@ export default function App() {
               )}
               {activeTab === 'renal' && (
                 <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Serum Creatinine / Usia</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>{renalInputs.scr || '-'} mg/dL ({renalInputs.age || '-'} thn)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Variabel Pasien</td></tr>
+                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Serum Creatinine / Usia</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>{patient.serumCreatinine || '-'} mg/dL ({ageVal || '-'} thn)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Variabel Pasien</td></tr>
                   <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>Cockcroft-Gault (ClCr)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '12px', color: '#1e40af' }}>{clcr}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>mL/min</td></tr>
                   <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>CKD-EPI (eGFR)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '12px', color: '#1e40af' }}>{egfr}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>mL/min/1.73m²</td></tr>
                 </>
               )}
               {activeTab === 'anthro' && (
                 <>
-                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Tinggi / Berat Badan</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>{anthroInputs.height || '-'} cm / {anthroInputs.weight || '-'} kg</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Antropometri</td></tr>
+                  <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Tinggi / Berat Badan</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>{heightVal || '-'} cm / {weightVal || '-'} kg</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>Antropometri</td></tr>
                   <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>BSA (Luas Permukaan Tubuh)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{bsa}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>m²</td></tr>
                   <tr><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>BMI & Kategori</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{bmi} ({bmiCategory})</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>kg/m²</td></tr>
                   <tr style={{ background: '#f8fafc' }}><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e40af' }}>IBW (Berat Badan Ideal)</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{ibw}</td><td style={{ padding: '6px 10px', border: '1px solid #e2e8f0' }}>kg</td></tr>

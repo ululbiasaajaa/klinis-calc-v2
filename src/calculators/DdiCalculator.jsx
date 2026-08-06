@@ -92,15 +92,21 @@ export default function DdiCalculator() {
 
   // AUTO-MATCH OBAT DARI PATIENT STORE KE CHECKLIST SCREENING
   useEffect(() => {
-    if (medications.length > 0) {
+    if (medications && medications.length > 0) {
       const autoMatchedIds = [];
       medications.forEach((med) => {
+        if (!med?.name) return;
         const medNameLower = med.name.toLowerCase();
+        
         DRUG_LIST.forEach((d) => {
+          const dIdLower = d.id.toLowerCase();
           const dNameLower = d.name.toLowerCase();
-          // Cek substring matching
-          if (dNameLower.split('/')[0].trim() && medNameLower.includes(d.id)) {
-            if (!autoMatchedIds.includes(d.id)) autoMatchedIds.push(d.id);
+          
+          // Cek apakah ID atau nama obat cocok dengan entri medication
+          if (medNameLower.includes(dIdLower) || dNameLower.split('/').some(part => medNameLower.includes(part.trim()))) {
+            if (!autoMatchedIds.includes(d.id)) {
+              autoMatchedIds.push(d.id);
+            }
           }
         });
       });
@@ -113,27 +119,18 @@ export default function DdiCalculator() {
 
   // Toggle Pilihan Obat
   const handleToggleDrug = (drugId) => {
-    if (selectedDrugs.includes(drugId)) {
-      setSelectedDrugs(selectedDrugs.filter((id) => id !== drugId));
-    } else {
-      setSelectedDrugs([...selectedDrugs, drugId]);
-    }
+    setSelectedDrugs((prev) => 
+      prev.includes(drugId) ? prev.filter((id) => id !== drugId) : [...prev, drugId]
+    );
   };
 
   // Cek Interaksi Berdasarkan Obat Terpilih
   const detectInteractions = () => {
     if (selectedDrugs.length < 2) return [];
 
-    const matches = [];
-    INTERACTION_DATABASE.forEach((item) => {
-      // Cek apakah SEMUA obat dalam pasangan interaksi ada di dalam selectedDrugs
-      const isMatch = item.drugs.every((d) => selectedDrugs.includes(d));
-      if (isMatch) {
-        matches.push(item);
-      }
-    });
-
-    return matches;
+    return INTERACTION_DATABASE.filter((item) =>
+      item.drugs.every((d) => selectedDrugs.includes(d))
+    );
   };
 
   const detectedList = detectInteractions();
@@ -141,7 +138,7 @@ export default function DdiCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
-      {patient.patientName && (
+      {patient?.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Evaluasi interaksi obat (DDI Engine v3).</span>
           <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
@@ -150,7 +147,7 @@ export default function DdiCalculator() {
 
       {/* HEADER SECTION */}
       <div className="mb-4">
-        <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
+        <h3 className={`text-sm font-bold mb-1 flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
           <span>💊</span> Pilih Kombinasi Obat Pasien (DDI High-Risk Screening v3):
         </h3>
         <p className="text-slate-400 text-xs">
@@ -170,8 +167,8 @@ export default function DdiCalculator() {
                 onClick={() => handleToggleDrug(drug.id)}
                 className={`p-2.5 rounded-xl border text-left text-xs font-semibold transition-all flex justify-between items-center cursor-pointer ${
                   isSelected
-                    ? 'bg-blue-600/30 border-blue-500 text-white shadow-md'
-                    : isDark ? 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200' : 'bg-white border-slate-300 text-slate-700'
+                    ? 'bg-blue-600/30 border-blue-500 text-blue-300 dark:text-white shadow-md'
+                    : isDark ? 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
                 }`}
               >
                 <span>{drug.name}</span>
@@ -186,7 +183,7 @@ export default function DdiCalculator() {
         {/* STATUS OBAT TERPILIH */}
         <div className="mt-3 flex justify-between items-center text-xs">
           <span className="text-slate-400">
-            Terpilih: <strong className="text-blue-400">{selectedDrugs.length} Obat</strong>
+            Terpilih: <strong className="text-blue-500 dark:text-blue-400">{selectedDrugs.length} Obat</strong>
           </span>
           {selectedDrugs.length > 0 && (
             <button
@@ -202,7 +199,7 @@ export default function DdiCalculator() {
 
       {/* HASIL ANALYSIS SCREENING */}
       <div className="space-y-4">
-        <h4 className="text-xs font-bold text-slate-300 border-b border-slate-800 pb-2">
+        <h4 className={`text-xs font-bold border-b pb-2 ${isDark ? 'text-slate-300 border-slate-800' : 'text-slate-700 border-slate-200'}`}>
           📊 HASIL ANALISIS INTERAKSI OBAT:
         </h4>
 
@@ -215,9 +212,11 @@ export default function DdiCalculator() {
         )}
 
         {selectedDrugs.length >= 2 && detectedList.length === 0 && (
-          <div className="bg-emerald-950/40 border border-emerald-800/50 p-6 rounded-2xl text-center">
+          <div className={`border p-6 rounded-2xl text-center ${
+            isDark ? 'bg-emerald-950/40 border-emerald-800/50' : 'bg-emerald-50 border-emerald-200'
+          }`}>
             <span className="text-2xl block mb-2">✅</span>
-            <p className="text-emerald-300 font-bold text-sm mb-1">
+            <p className={`font-bold text-sm mb-1 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>
               Tidak Ditemukan Interaksi Berisiko Tinggi
             </p>
             <p className="text-slate-400 text-xs">
@@ -226,21 +225,22 @@ export default function DdiCalculator() {
           </div>
         )}
 
-        {detectedList.map((item, index) => {
+        {detectedList.map((item) => {
           const drugName1 = DRUG_LIST.find((d) => d.id === item.drugs[0])?.name;
           const drugName2 = DRUG_LIST.find((d) => d.id === item.drugs[1])?.name;
+          const itemKey = item.drugs.join('-');
 
           return (
             <div
-              key={index}
+              key={itemKey}
               className={`p-5 rounded-2xl border ${
                 item.severity === 'Major'
-                  ? 'bg-red-950/40 border-red-800/60'
-                  : 'bg-amber-950/40 border-amber-800/60'
+                  ? isDark ? 'bg-red-950/40 border-red-800/60' : 'bg-red-50 border-red-200'
+                  : isDark ? 'bg-amber-950/40 border-amber-800/60' : 'bg-amber-50 border-amber-200'
               }`}
             >
               <div className="flex justify-between items-start mb-3">
-                <span className="font-bold text-sm text-white flex items-center gap-2">
+                <span className={`font-bold text-sm flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   <span>⚡</span> {drugName1} + {drugName2}
                 </span>
                 <span
@@ -257,17 +257,19 @@ export default function DdiCalculator() {
               <div className="space-y-2 text-xs">
                 <div>
                   <span className="text-slate-400 font-bold block mb-0.5">Efek Interaksi Klinis:</span>
-                  <p className="text-slate-200 font-semibold">{item.effect}</p>
+                  <p className={`font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{item.effect}</p>
                 </div>
 
                 <div>
                   <span className="text-slate-400 font-bold block mb-0.5">Mekanisme Farmakologi:</span>
-                  <p className="text-slate-400 leading-relaxed">{item.mechanism}</p>
+                  <p className={`leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{item.mechanism}</p>
                 </div>
 
-                <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 mt-2">
-                  <span className="text-blue-400 font-bold block mb-1">💡 Rekomendasi Aksi Klinis:</span>
-                  <p className="text-slate-300 leading-relaxed">{item.action}</p>
+                <div className={`p-3 rounded-xl border mt-2 ${
+                  isDark ? 'bg-slate-950/80 border-slate-800/80' : 'bg-white border-slate-200'
+                }`}>
+                  <span className="text-blue-500 dark:text-blue-400 font-bold block mb-1">💡 Rekomendasi Aksi Klinis:</span>
+                  <p className={`leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{item.action}</p>
                 </div>
               </div>
             </div>

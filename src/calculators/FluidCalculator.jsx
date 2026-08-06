@@ -18,7 +18,7 @@ export default function FluidParklandCalculator() {
 
   // Auto-sync data berat badan dari Patient Context Bar ke kedua kalkulator cairan
   useEffect(() => {
-    if (patient && patient.weightKg !== '') {
+    if (patient && patient.weightKg !== undefined && patient.weightKg !== '') {
       const wtStr = String(patient.weightKg);
       setWeightFluid(wtStr);
       setWeightBurn(wtStr);
@@ -26,37 +26,38 @@ export default function FluidParklandCalculator() {
   }, [patient]);
 
   // 1. Kalkulasi Holliday-Segar (Rumatan Cairan 24 Jam)
-  const maintenanceFluid = (() => {
-    const w = parseFloat(weightFluid) || 0;
-    if (w <= 0) return 0;
-    let ml = 0;
-    if (w <= 10) {
-      ml = w * 100;
-    } else if (w <= 20) {
-      ml = 1000 + (w - 10) * 50;
-    } else {
-      ml = 1500 + (w - 20) * 20;
-    }
-    return Math.round(ml);
-  })();
+  const wFluid = parseFloat(weightFluid);
+  let maintenanceFluid = 0;
 
+  if (!isNaN(wFluid) && wFluid > 0) {
+    if (wFluid <= 10) {
+      maintenanceFluid = wFluid * 100;
+    } else if (wFluid <= 20) {
+      maintenanceFluid = 1000 + (wFluid - 10) * 50;
+    } else {
+      maintenanceFluid = 1500 + (wFluid - 20) * 20;
+    }
+  }
+
+  maintenanceFluid = Math.round(maintenanceFluid);
   const hourlyRateFluid = Math.round(maintenanceFluid / 24);
 
   // 2. Kalkulasi Parkland Formula (Resusitasi Cairan Luka Bakar 24 Jam - Ringer Laktat)
-  const { totalParkland, first8Hours, next16Hours } = (() => {
-    const w = parseFloat(weightBurn) || 0;
-    const b = parseFloat(tbsa) || 0;
-    if (w <= 0 || b <= 0) return { totalParkland: 0, first8Hours: 0, next16Hours: 0 };
+  const wBurn = parseFloat(weightBurn);
+  const bTbsa = parseFloat(tbsa);
 
+  let totalParkland = 0;
+  let first8Hours = 0;
+  let next16Hours = 0;
+
+  if (!isNaN(wBurn) && wBurn > 0 && !isNaN(bTbsa) && bTbsa > 0) {
     // Formula Parkland: 4 mL x BB (kg) x % TBSA
-    const total = 4 * w * b;
+    const total = 4 * wBurn * bTbsa;
     const half = total / 2;
-    return {
-      totalParkland: Math.round(total),
-      first8Hours: Math.round(half / 8),
-      next16Hours: Math.round(half / 16)
-    };
-  })();
+    totalParkland = Math.round(total);
+    first8Hours = Math.round(half / 8);
+    next16Hours = Math.round(half / 16);
+  }
 
   // Aksi simpan ke Regimen Obat Pasien Store v3
   const handleAddMaintenanceMed = () => {
@@ -97,7 +98,7 @@ export default function FluidParklandCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
-      {patient.patientName && (
+      {patient?.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Berat badan tersinkronisasi otomatis.</span>
           <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
@@ -113,24 +114,33 @@ export default function FluidParklandCalculator() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
           <div>
-            <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Berat Badan Pasien (kg)</label>
+            <label htmlFor="weight-fluid-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Berat Badan Pasien (kg)
+            </label>
             <input
+              id="weight-fluid-input"
               type="number"
               value={weightFluid}
               onChange={(e) => setWeightFluid(e.target.value)}
               placeholder="e.g. 65"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${
+                isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
             />
           </div>
 
           <div className={`p-4 rounded-xl border flex justify-around text-center ${isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'}`}>
             <div>
               <span className="text-[10px] text-blue-500 font-bold block mb-1">TOTAL 24 JAM</span>
-              <span className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{maintenanceFluid} <span className="text-xs font-normal text-slate-400">mL</span></span>
+              <span className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {maintenanceFluid} <span className="text-xs font-normal text-slate-400">mL</span>
+              </span>
             </div>
             <div className="border-l border-blue-500/20 pl-4">
               <span className="text-[10px] text-blue-500 font-bold block mb-1">KECEPATAN INFUS</span>
-              <span className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{hourlyRateFluid} <span className="text-xs font-normal text-slate-400">mL/jam</span></span>
+              <span className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {hourlyRateFluid} <span className="text-xs font-normal text-slate-400">mL/jam</span>
+              </span>
             </div>
           </div>
         </div>
@@ -139,7 +149,11 @@ export default function FluidParklandCalculator() {
           <button
             type="button"
             onClick={() => handleSaveToTracker('maintenance')}
-            className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2 px-3 rounded-xl transition-all cursor-pointer"
+            className={`font-bold py-2 px-3 rounded-xl transition-all cursor-pointer border ${
+              isDark
+                ? 'bg-slate-800 hover:bg-slate-700 text-blue-400 border-slate-700'
+                : 'bg-slate-100 hover:bg-slate-200 text-blue-700 border-slate-300'
+            }`}
           >
             📈 Simpan ke Outcome Tracker
           </button>
@@ -163,24 +177,34 @@ export default function FluidParklandCalculator() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Berat Badan Pasien (kg)</label>
+            <label htmlFor="weight-burn-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Berat Badan Pasien (kg)
+            </label>
             <input
+              id="weight-burn-input"
               type="number"
               value={weightBurn}
               onChange={(e) => setWeightBurn(e.target.value)}
               placeholder="e.g. 60"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${
+                isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
             />
           </div>
 
           <div>
-            <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Luas Luka Bakar / TBSA (% Rule of Nines)</label>
+            <label htmlFor="tbsa-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Luas Luka Bakar / TBSA (% Rule of Nines)
+            </label>
             <input
+              id="tbsa-input"
               type="number"
               value={tbsa}
               onChange={(e) => setTbsa(e.target.value)}
               placeholder="e.g. 25"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs font-semibold ${
+                isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
             />
           </div>
         </div>
@@ -189,16 +213,16 @@ export default function FluidParklandCalculator() {
         <div className={`p-4 rounded-xl border space-y-3 ${isDark ? 'bg-amber-950/30 border-amber-800/50' : 'bg-amber-50 border-amber-200'}`}>
           <div className="flex justify-between items-center border-b pb-2 border-amber-500/20">
             <span className="text-xs font-bold text-amber-600 dark:text-amber-400">Total Cairan RL 24 Jam:</span>
-            <span className="text-lg font-extrabold text-amber-700 dark:text-white">{totalParkland} mL</span>
+            <span className={`text-lg font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{totalParkland} mL</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
               <span className="text-[10px] text-amber-500 font-bold block">50% PERTAMA (8 Jam Sejak Kejadian)</span>
-              <span className="text-base font-bold text-slate-200">{first8Hours} mL/jam</span>
+              <span className={`text-base font-bold ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>{first8Hours} mL/jam</span>
             </div>
             <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
               <span className="text-[10px] text-amber-500 font-bold block">50% KEDUA (16 Jam Berikutnya)</span>
-              <span className="text-base font-bold text-slate-200">{next16Hours} mL/jam</span>
+              <span className={`text-base font-bold ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>{next16Hours} mL/jam</span>
             </div>
           </div>
         </div>
@@ -207,7 +231,11 @@ export default function FluidParklandCalculator() {
           <button
             type="button"
             onClick={() => handleSaveToTracker('parkland')}
-            className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2 px-3 rounded-xl transition-all cursor-pointer"
+            className={`font-bold py-2 px-3 rounded-xl transition-all cursor-pointer border ${
+              isDark
+                ? 'bg-slate-800 hover:bg-slate-700 text-blue-400 border-slate-700'
+                : 'bg-slate-100 hover:bg-slate-200 text-blue-700 border-slate-300'
+            }`}
           >
             📈 Simpan ke Outcome Tracker
           </button>

@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
 import { usePatientStore } from '../store/usePatientStore';
 
 export default function SteroidConversionCalculator() {
   const { theme } = useTheme();
-  const { lang } = useLanguage();
   const isDark = theme === 'dark';
 
   // AMBIL DATA PASIEN GLOBAL DAN DISPATCHERS V3
@@ -70,7 +68,7 @@ export default function SteroidConversionCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
-      {patient.patientName && (
+      {patient?.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Evaluasi konversi dosis kortikosteroid.</span>
           <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
@@ -80,10 +78,11 @@ export default function SteroidConversionCalculator() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* STEROID ASAL */}
         <div>
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-            {lang === 'id' ? 'Steroid Saat Ini (Asal):' : 'Current Steroid:'}
+          <label htmlFor="from-steroid-select" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+            Steroid Saat Ini (Asal):
           </label>
           <select
+            id="from-steroid-select"
             value={fromSteroid}
             onChange={(e) => setFromSteroid(e.target.value)}
             className={`w-full p-3 rounded-xl border outline-none font-bold cursor-pointer ${
@@ -98,10 +97,11 @@ export default function SteroidConversionCalculator() {
 
         {/* DOSIS ASAL */}
         <div>
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-            {lang === 'id' ? 'Dosis Asal (mg/hari):' : 'Current Dose (mg/day):'}
+          <label htmlFor="from-dose-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+            Dosis Asal (mg/hari):
           </label>
           <input
+            id="from-dose-input"
             type="number"
             value={fromDose}
             onChange={(e) => setFromDose(e.target.value)}
@@ -114,10 +114,11 @@ export default function SteroidConversionCalculator() {
 
         {/* STEROID TUJUAN */}
         <div>
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-            {lang === 'id' ? 'Target Steroid (Konversi):' : 'Target Steroid:'}
+          <label htmlFor="target-steroid-select" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+            Target Steroid (Konversi):
           </label>
           <select
+            id="target-steroid-select"
             value={targetSteroid}
             onChange={(e) => setTargetSteroid(e.target.value)}
             className={`w-full p-3 rounded-xl border outline-none font-bold cursor-pointer ${
@@ -136,7 +137,7 @@ export default function SteroidConversionCalculator() {
         isDark ? 'bg-blue-950/40 border-blue-800/50' : 'bg-blue-50 border-blue-200'
       }`}>
         <span className="text-xs text-blue-500 font-bold block mb-1">
-          {lang === 'id' ? 'HASIL DOSIS KONVERSI SETARA' : 'EQUIVALENT CONVERTED DOSE'}
+          HASIL DOSIS KONVERSI SETARA
         </span>
         <div className={`text-4xl font-extrabold my-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
           {convertedDose} <span className="text-sm font-normal text-blue-400">mg / hari</span>
@@ -164,7 +165,11 @@ export default function SteroidConversionCalculator() {
         <button
           type="button"
           onClick={handleSaveToTracker}
-          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+          className={`font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2 border ${
+            isDark
+              ? 'bg-slate-800 hover:bg-slate-700 text-blue-400 border-slate-700'
+              : 'bg-slate-100 hover:bg-slate-200 text-blue-700 border-slate-300'
+          }`}
         >
           📈 Simpan Konversi ke Outcome Tracker
         </button>

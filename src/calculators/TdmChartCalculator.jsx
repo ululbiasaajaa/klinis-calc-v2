@@ -106,7 +106,7 @@ export default function TdmChartCalculator() {
     plugins: {
       legend: {
         position: 'top',
-        labels: { color: '#94a3b8', font: { size: 11 } },
+        labels: { color: isDark ? '#94a3b8' : '#475569', font: { size: 11 } },
       },
       tooltip: {
         callbacks: {
@@ -116,25 +116,34 @@ export default function TdmChartCalculator() {
     },
     scales: {
       x: {
-        ticks: { color: '#94a3b8', font: { size: 10 } },
-        grid: { color: '#1e293b' },
+        ticks: { color: isDark ? '#94a3b8' : '#475569', font: { size: 10 } },
+        grid: { color: isDark ? '#1e293b' : '#e2e8f0' },
       },
       y: {
-        ticks: { color: '#94a3b8', font: { size: 10 } },
-        grid: { color: '#1e293b' },
+        ticks: { color: isDark ? '#94a3b8' : '#475569', font: { size: 10 } },
+        grid: { color: isDark ? '#1e293b' : '#e2e8f0' },
       },
     },
   };
 
   // ANALISIS TREN STATUS TERKINI
   const latestVal = dataPoints.length > 0 ? parseFloat(dataPoints[dataPoints.length - 1].value) : 0;
-  let statusBadge = { color: 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300', text: '✅ TERAPEUTIK (Aman & Efektif)' };
+  let statusBadge = { 
+    color: isDark ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300' : 'bg-emerald-50 border-emerald-300 text-emerald-800', 
+    text: '✅ TERAPEUTIK (Aman & Efektif)' 
+  };
 
   if (latestVal > 0) {
     if (latestVal < target.min) {
-      statusBadge = { color: 'bg-amber-950/60 border-amber-500/50 text-amber-300', text: '⚠️ SUB-TERAPEUTIK (Kadar Terlalu Rendah / Kurang Efektif)' };
+      statusBadge = { 
+        color: isDark ? 'bg-amber-950/60 border-amber-500/50 text-amber-300' : 'bg-amber-50 border-amber-300 text-amber-800', 
+        text: '⚠️ SUB-TERAPEUTIK (Kadar Terlalu Rendah / Kurang Efektif)' 
+      };
     } else if (latestVal > target.max) {
-      statusBadge = { color: 'bg-red-950/60 border-red-500/50 text-red-300', text: '🚨 TOKSIK / OVERDOSE (Risiko Efek Samping Fatal)' };
+      statusBadge = { 
+        color: isDark ? 'bg-red-950/60 border-red-500/50 text-red-300' : 'bg-red-50 border-red-300 text-red-800', 
+        text: '🚨 TOKSIK / OVERDOSE (Risiko Efek Samping Fatal)' 
+      };
     }
   }
 
@@ -170,7 +179,7 @@ export default function TdmChartCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
-      {patient.patientName && (
+      {patient?.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Pemantauan TDM (Therapeutic Drug Monitoring).</span>
           <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
@@ -180,11 +189,14 @@ export default function TdmChartCalculator() {
       {/* SELEKSI OBAT NTI */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-slate-300 mb-1 font-bold">Pilih Obat NTI Terapi:</label>
+          <label htmlFor="drug-selection" className={`block mb-1 font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Pilih Obat NTI Terapi:</label>
           <select
+            id="drug-selection"
             value={selectedDrug}
             onChange={(e) => setSelectedDrug(e.target.value)}
-            className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-blue-500 text-xs font-semibold cursor-pointer"
+            className={`w-full p-3 border rounded-xl outline-none text-xs font-semibold cursor-pointer ${
+              isDark ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
+            }`}
           >
             {Object.keys(DRUG_TARGETS).map((key) => (
               <option key={key} value={key}>
@@ -202,8 +214,8 @@ export default function TdmChartCalculator() {
       </div>
 
       {/* GRAFIK KURVA LINE CHART */}
-      <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl">
-        <h4 className="text-xs font-bold text-slate-300 mb-3 flex items-center gap-2">
+      <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+        <h4 className={`text-xs font-bold mb-3 flex items-center gap-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
           <span>📈</span> Kurva Pemantauan Kadar Obat Dalam Serum (Time-Series):
         </h4>
         <div className="h-64 sm:h-80 w-full">
@@ -212,24 +224,36 @@ export default function TdmChartCalculator() {
       </div>
 
       {/* INPUT DATA POINT BARU */}
-      <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl space-y-4">
-        <h4 className="text-xs font-bold text-slate-300">➕ Tambah Hasil Sampling Kadar Obat Baru:</h4>
+      <div className={`p-4 rounded-2xl border space-y-4 ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+        <h4 className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>➕ Tambah Hasil Sampling Kadar Obat Baru:</h4>
         <form onSubmit={handleAddPoint} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <input
-            type="text"
-            placeholder="Waktu/Hari (e.g. Hari 4 - 08:00)"
-            value={newLabel}
-            onChange={(e) => setNewLabel(e.target.value)}
-            className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-white text-xs outline-none focus:border-blue-500 font-semibold"
-          />
-          <input
-            type="number"
-            step="0.1"
-            placeholder={`Kadar (${target.unit})`}
-            value={newValue}
-            onChange={(e) => setNewValue(e.target.value)}
-            className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-white text-xs outline-none focus:border-blue-500 font-semibold"
-          />
+          <div>
+            <label htmlFor="sampling-label" className="sr-only">Waktu atau Hari Sampling</label>
+            <input
+              id="sampling-label"
+              type="text"
+              placeholder="Waktu/Hari (e.g. Hari 4 - 08:00)"
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              className={`w-full p-3 border rounded-xl text-xs outline-none font-semibold ${
+                isDark ? 'bg-slate-900 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
+              }`}
+            />
+          </div>
+          <div>
+            <label htmlFor="sampling-value" className="sr-only">Nilai Kadar Serum</label>
+            <input
+              id="sampling-value"
+              type="number"
+              step="0.1"
+              placeholder={`Kadar (${target.unit})`}
+              value={newValue}
+              onChange={(e) => setNewValue(e.target.value)}
+              className={`w-full p-3 border rounded-xl text-xs outline-none font-semibold ${
+                isDark ? 'bg-slate-900 border-slate-800 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'
+              }`}
+            />
+          </div>
           <button
             type="submit"
             className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl text-xs transition-all cursor-pointer"
@@ -239,20 +263,22 @@ export default function TdmChartCalculator() {
         </form>
 
         {/* DAFTAR DATA POINTS */}
-        <div className="border-t border-slate-800 pt-3">
-          <span className="text-[11px] font-bold text-slate-400 block mb-2">Riwayat Titik Sampling:</span>
+        <div className={`border-t pt-3 ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+          <span className={`text-[11px] font-bold block mb-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Riwayat Titik Sampling:</span>
           <div className="flex flex-wrap gap-2">
             {dataPoints.map((point, idx) => (
               <div
                 key={idx}
-                className="bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs"
+                className={`px-3 py-1.5 rounded-lg border flex items-center gap-2 text-xs ${
+                  isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}
               >
-                <span className="text-slate-300 font-medium">{point.label}:</span>
-                <strong className="text-blue-400">{point.value} {target.unit}</strong>
+                <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{point.label}:</span>
+                <strong className="text-blue-500">{point.value} {target.unit}</strong>
                 <button
                   type="button"
                   onClick={() => handleRemovePoint(idx)}
-                  className="text-slate-500 hover:text-red-400 font-bold ml-1 cursor-pointer"
+                  className="text-slate-400 hover:text-red-500 font-bold ml-1 cursor-pointer"
                 >
                   ✖
                 </button>
@@ -267,7 +293,11 @@ export default function TdmChartCalculator() {
         <button
           type="button"
           onClick={handleSaveToTracker}
-          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+          className={`font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2 border ${
+            isDark
+              ? 'bg-slate-800 hover:bg-slate-700 text-blue-400 border-slate-700'
+              : 'bg-slate-100 hover:bg-slate-200 text-blue-700 border-slate-300'
+          }`}
         >
           📈 Simpan Grafik & Hasil ke Outcome Tracker
         </button>

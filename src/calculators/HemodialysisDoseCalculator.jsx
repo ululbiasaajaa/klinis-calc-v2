@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
 import { usePatientStore } from '../store/usePatientStore';
 
 export default function HemodialysisDoseCalculator() {
   const { theme } = useTheme();
-  const { lang } = useLanguage();
   const isDark = theme === 'dark';
 
   // AMBIL DATA PASIEN GLOBAL DAN DISPATCH STORE V3
@@ -91,7 +89,7 @@ export default function HemodialysisDoseCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
-      {patient.patientName && (
+      {patient?.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Evaluasi penyesuaian dosis obat Hemodialisis.</span>
           <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
@@ -101,10 +99,11 @@ export default function HemodialysisDoseCalculator() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* PILIH OBAT DARI DATABASE */}
         <div>
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-            {lang === 'id' ? 'Pilih Obat Pasien HD:' : 'Select Medication:'}
+          <label htmlFor="hd-drug-select" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+            Pilih Obat Pasien HD:
           </label>
           <select
+            id="hd-drug-select"
             value={selectedDrug}
             onChange={(e) => setSelectedDrug(e.target.value)}
             className={`w-full p-3 rounded-xl border outline-none text-xs font-bold cursor-pointer ${
@@ -121,10 +120,11 @@ export default function HemodialysisDoseCalculator() {
 
         {/* TIPE DIALYZER / FILTER HD */}
         <div>
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-            {lang === 'id' ? 'Tipe Membran Dialiser (Filter HD):' : 'Dialyzer Membrane Type:'}
+          <label htmlFor="hd-filter-select" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+            Tipe Membran Dialiser (Filter HD):
           </label>
           <select
+            id="hd-filter-select"
             name="filterType"
             value={customInputs.filterType}
             onChange={handleInputChange}
@@ -139,10 +139,11 @@ export default function HemodialysisDoseCalculator() {
 
         {/* DOSIS NORMAL SEBELUM HD */}
         <div>
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-            {lang === 'id' ? 'Dosis Rutin Seharusnya (mg):' : 'Standard Dose (mg):'}
+          <label htmlFor="hd-dose-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+            Dosis Rutin Seharusnya (mg):
           </label>
           <input
+            id="hd-dose-input"
             type="number"
             name="preHdDoseMg"
             value={customInputs.preHdDoseMg}
@@ -156,10 +157,11 @@ export default function HemodialysisDoseCalculator() {
 
         {/* DURASI PROSES CUCI DARAH */}
         <div>
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-            {lang === 'id' ? 'Durasi HD (Jam):' : 'HD Session Duration (Hours):'}
+          <label htmlFor="hd-duration-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+            Durasi HD (Jam):
           </label>
           <input
+            id="hd-duration-input"
             type="number"
             name="hdDurationHours"
             value={customInputs.hdDurationHours}
@@ -216,7 +218,11 @@ export default function HemodialysisDoseCalculator() {
         <button
           type="button"
           onClick={handleSaveToTracker}
-          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+          className={`font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2 border ${
+            isDark
+              ? 'bg-slate-800 hover:bg-slate-700 text-blue-400 border-slate-700'
+              : 'bg-slate-100 hover:bg-slate-200 text-blue-700 border-slate-300'
+          }`}
         >
           📈 Simpan Dosis HD ke Outcome Tracker
         </button>

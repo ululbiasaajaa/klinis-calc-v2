@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
 import { usePatientStore } from '../store/usePatientStore';
 
 export default function StoppStartCalculator() {
   const { theme } = useTheme();
-  const { lang } = useLanguage();
   const isDark = theme === 'dark';
 
   // AMBIL DATA PASIEN GLOBAL DAN DISPATCHERS V3
@@ -81,7 +79,7 @@ export default function StoppStartCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
-      {patient.patientName && (
+      {patient?.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Skrining farmakoterapi geriatri STOPP/START.</span>
           <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
@@ -91,7 +89,7 @@ export default function StoppStartCalculator() {
       <div className={`p-4 rounded-xl border ${
         isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-blue-50 border-blue-200 text-slate-700'
       }`}>
-        <p className="font-bold mb-1 text-blue-400">👴 Modul Screening Geriatri STOPP / START v2 (v3):</p>
+        <p className="font-bold mb-1 text-blue-500">👴 Modul Screening Geriatri STOPP / START v2 (v3):</p>
         <p className="leading-relaxed">
           Centang temuan kondisi atau obat pada resep pasien lansia di bawah ini untuk mendeteksi potensi <strong>Overprescribing (STOPP)</strong> maupun <strong>Underprescribing (START)</strong>.
         </p>
@@ -189,7 +187,11 @@ export default function StoppStartCalculator() {
         <button
           type="button"
           onClick={handleSaveToTracker}
-          className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+          className={`font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2 border ${
+            isDark
+              ? 'bg-slate-800 hover:bg-slate-700 text-blue-400 border-slate-700'
+              : 'bg-slate-100 hover:bg-slate-200 text-blue-700 border-slate-300'
+          }`}
         >
           📈 Simpan Skrining ke Outcome Tracker
         </button>

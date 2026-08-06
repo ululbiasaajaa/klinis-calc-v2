@@ -14,7 +14,7 @@ export default function ChildPughCalculator() {
   const [ascites, setAscites] = useState('1');          
   const [bilirubinCP, setBilirubinCP] = useState('2');        
   const [albumin, setAlbumin] = useState('2');          
-  const [inrCP, setInrCP] = useState('1');                    
+  const [inrCP, setInrCP] = useState('1');                  
 
   // State untuk MELD Score (Membutuhkan angka lab aktual)
   const [meldBili, setMeldBili] = useState('1.5');
@@ -24,13 +24,13 @@ export default function ChildPughCalculator() {
 
   // Auto-sync serum creatinine dari Patient Store v3 jika ada
   useEffect(() => {
-    if (patient.serumCreatinine) {
+    if (patient?.serumCreatinine) {
       setMeldCr(patient.serumCreatinine.toString());
     }
-  }, [patient.serumCreatinine]);
+  }, [patient?.serumCreatinine]);
 
   // 1. Kalkulasi Child-Pugh
-  const totalCPScore = parseInt(encephalopathy) + parseInt(ascites) + parseInt(bilirubinCP) + parseInt(albumin) + parseInt(inrCP);
+  const totalCPScore = parseInt(encephalopathy, 10) + parseInt(ascites, 10) + parseInt(bilirubinCP, 10) + parseInt(albumin, 10) + parseInt(inrCP, 10);
 
   let cClass = 'A (Mild Impairment)';
   let survival1Year = '100%';
@@ -50,33 +50,27 @@ export default function ChildPughCalculator() {
   }
 
   // 2. Kalkulasi MELD Score (Standard UNOS Formula)
-  const meldScore = (() => {
-    let b = parseFloat(meldBili) || 1.0;
-    let i = parseFloat(meldInr) || 1.0;
-    let c = parseFloat(meldCr) || 1.0;
+  let b = parseFloat(meldBili);
+  let i = parseFloat(meldInr);
+  let c = parseFloat(meldCr);
 
-    // Batasan minimum nilai lab adalah 1.0
-    if (b < 1.0) b = 1.0;
-    if (i < 1.0) i = 1.0;
-    if (c < 1.0) c = 1.0;
+  b = isNaN(b) || b < 1.0 ? 1.0 : b;
+  i = isNaN(i) || i < 1.0 ? 1.0 : i;
+  c = isNaN(c) || c < 1.0 ? 1.0 : c;
 
-    // Jika pasien menjalani dialisis 2x dalam seminggu terakhir atau CVVH, kreatinin otomatis diset 4.0
-    if (isDialysis === 'yes') {
-      c = 4.0;
-    }
-    // Batas maksimal kreatinin untuk MELD adalah 4.0 mg/dL
-    if (c > 4.0) c = 4.0;
+  // Jika pasien menjalani dialisis 2x dalam seminggu terakhir atau CVVH, kreatinin otomatis diset 4.0
+  if (isDialysis === 'yes') {
+    c = 4.0;
+  }
+  // Batas maksimal kreatinin untuk MELD adalah 4.0 mg/dL
+  if (c > 4.0) c = 4.0;
 
-    const rawMeld = (0.957 * Math.log(c)) + (0.378 * Math.log(b)) + (1.12 * Math.log(i)) + 0.643;
-    let roundedMeld = Math.round(rawMeld * 10);
-    
-    // MELD Score dibatasi antara 6 sampai 40
-    let finalMeld = Math.round(roundedMeld / 10);
-    if (finalMeld < 6) finalMeld = 6;
-    if (finalMeld > 40) finalMeld = 40;
-
-    return finalMeld;
-  })();
+  const rawMeld = (0.957 * Math.log(c)) + (0.378 * Math.log(b)) + (1.12 * Math.log(i)) + 0.643;
+  let meldScore = Math.round(rawMeld * 10);
+  
+  // MELD Score dibatasi antara 6 sampai 40
+  if (meldScore < 6) meldScore = 6;
+  if (meldScore > 40) meldScore = 40;
 
   // Estimasi Mortalitas 3 Bulan Berdasarkan MELD Score
   let meldMortality = '3.6% (Risiko Rendah)';
@@ -100,7 +94,7 @@ export default function ChildPughCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
-      {patient.patientName && (
+      {patient?.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Evaluasi fungsi hepar, sirosis & MELD score.</span>
           <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
@@ -116,11 +110,16 @@ export default function ChildPughCalculator() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Ensefalopati Hepatik</label>
+            <label htmlFor="encephalopathy-select" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Ensefalopati Hepatik
+            </label>
             <select
+              id="encephalopathy-select"
               value={encephalopathy}
               onChange={(e) => setEncephalopathy(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${
+                isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
             >
               <option value="1">Tidak Ada (Normal) - 1 Poin</option>
               <option value="2">Grade 1-2 (Letargi ringan) - 2 Poin</option>
@@ -129,11 +128,16 @@ export default function ChildPughCalculator() {
           </div>
 
           <div>
-            <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Asites</label>
+            <label htmlFor="ascites-select" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Asites
+            </label>
             <select
+              id="ascites-select"
               value={ascites}
               onChange={(e) => setAscites(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${
+                isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
             >
               <option value="1">Tidak Ada (None) - 1 Poin</option>
               <option value="2">Mild / Terkontrol Medikamentosa - 2 Poin</option>
@@ -142,11 +146,16 @@ export default function ChildPughCalculator() {
           </div>
 
           <div>
-            <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Bilirubin Total (mg/dL)</label>
+            <label htmlFor="bilirubin-cp-select" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Bilirubin Total (mg/dL)
+            </label>
             <select
+              id="bilirubin-cp-select"
               value={bilirubinCP}
               onChange={(e) => setBilirubinCP(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${
+                isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
             >
               <option value="1">&lt; 2.0 mg/dL - 1 Poin</option>
               <option value="2">2.0 - 3.0 mg/dL - 2 Poin</option>
@@ -155,11 +164,16 @@ export default function ChildPughCalculator() {
           </div>
 
           <div>
-            <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Albumin Serum (g/dL)</label>
+            <label htmlFor="albumin-select" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Albumin Serum (g/dL)
+            </label>
             <select
+              id="albumin-select"
               value={albumin}
               onChange={(e) => setAlbumin(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${
+                isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
             >
               <option value="1">&gt; 3.5 g/dL - 1 Poin</option>
               <option value="2">2.8 - 3.5 g/dL - 2 Poin</option>
@@ -168,11 +182,16 @@ export default function ChildPughCalculator() {
           </div>
 
           <div className="md:col-span-2">
-            <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Prothrombin Time (INR)</label>
+            <label htmlFor="inr-cp-select" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Prothrombin Time (INR)
+            </label>
             <select
+              id="inr-cp-select"
               value={inrCP}
               onChange={(e) => setInrCP(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${
+                isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
             >
               <option value="1">INR &lt; 1.7 - 1 Poin</option>
               <option value="2">INR 1.7 - 2.3 - 2 Poin</option>
@@ -192,8 +211,12 @@ export default function ChildPughCalculator() {
             </span>
           </div>
           <div className="text-right text-[11px] space-y-0.5">
-            <p className="text-slate-400">Survival 1 Tahun: <strong className="text-white">{survival1Year}</strong></p>
-            <p className="text-slate-400">Risiko Bedah: <strong className="text-white">{surgicalRisk}</strong></p>
+            <p className="text-slate-400">
+              Survival 1 Tahun: <strong className={isDark ? 'text-white' : 'text-slate-900'}>{survival1Year}</strong>
+            </p>
+            <p className="text-slate-400">
+              Risiko Bedah: <strong className={isDark ? 'text-white' : 'text-slate-900'}>{surgicalRisk}</strong>
+            </p>
           </div>
         </div>
       </div>
@@ -208,47 +231,67 @@ export default function ChildPughCalculator() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
-            <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Bilirubin Total Aktual (mg/dL)</label>
+            <label htmlFor="meld-bili-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Bilirubin Total Aktual (mg/dL)
+            </label>
             <input
+              id="meld-bili-input"
               type="number"
               step="0.1"
               value={meldBili}
               onChange={(e) => setMeldBili(e.target.value)}
               placeholder="e.g. 2.5"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${
+                isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
             />
           </div>
 
           <div>
-            <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>INR Aktual</label>
+            <label htmlFor="meld-inr-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              INR Aktual
+            </label>
             <input
+              id="meld-inr-input"
               type="number"
               step="0.1"
               value={meldInr}
               onChange={(e) => setMeldInr(e.target.value)}
               placeholder="e.g. 1.5"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${
+                isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
             />
           </div>
 
           <div>
-            <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Serum Creatinine (mg/dL)</label>
+            <label htmlFor="meld-cr-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Serum Creatinine (mg/dL)
+            </label>
             <input
+              id="meld-cr-input"
               type="number"
               step="0.1"
               value={meldCr}
               onChange={(e) => setMeldCr(e.target.value)}
               placeholder="e.g. 1.2"
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs ${
+                isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
             />
           </div>
 
           <div className="md:col-span-3">
-            <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Apakah pasien menjalani Dialisis / Hemodialisis (≥ 2x dalam seminggu terakhir)?</label>
+            <label htmlFor="dialysis-select" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Apakah pasien menjalani Dialisis / Hemodialisis (≥ 2x dalam seminggu terakhir)?
+            </label>
             <select
+              id="dialysis-select"
               value={isDialysis}
               onChange={(e) => setIsDialysis(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+              className={`w-full p-2.5 rounded-xl border outline-none text-xs cursor-pointer ${
+                isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
             >
               <option value="no">Tidak (Normal)</option>
               <option value="yes">Ya (Kreatinin otomatis diset 4.0 sesuai protokol MELD)</option>

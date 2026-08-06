@@ -1,37 +1,41 @@
 import React, { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
 import { usePatientStore } from '../store/usePatientStore';
 
 export default function ArdsCalculator() {
   const { theme } = useTheme();
-  const { lang } = useLanguage();
   const isDark = theme === 'dark';
 
   // AMBIL PASIEN & COMPUTED CLINICAL CONTEXT LANGSUNG DARI STORE V3
   const { patient, getClinicalContext, addLabRecord } = usePatientStore();
   const { ibw } = getClinicalContext();
 
-  const [inputs, setInputs] = useState({ pao2: '80', fio2: '40' }); // FiO2 dalam persen, misal 40% (0.4)
+  const [inputs, setInputs] = useState({ pao2: '80', fio2: '40' }); // FiO2 dalam persen (misal 40%) atau desimal (misal 0.4)
 
-  const ratio = (() => {
-    const p = parseFloat(inputs.pao2);
-    const f = parseFloat(inputs.fio2);
-    if (!p || !f || f <= 0) return 0;
-    // FiO2 input dalam bentuk persen (misal 40), dikonversi ke desimal (0.4) atau langsung jika desimal
+  // Kalkulasi Rasio PaO2 / FiO2
+  const p = parseFloat(inputs.pao2);
+  const f = parseFloat(inputs.fio2);
+
+  let ratio = 0;
+  if (!isNaN(p) && !isNaN(f) && f > 0 && p > 0) {
+    // Jika input FiO2 > 1 (misal 40), anggap persentase dan bagi 100.
+    // Jika input <= 1 (misal 0.4 atau 1), anggap sudah berbentuk desimal.
     const fio2Decimal = f > 1 ? f / 100 : f;
-    return Number((p / fio2Decimal).toFixed(1));
-  })();
+    if (fio2Decimal > 0) {
+      ratio = Number((p / fio2Decimal).toFixed(1));
+    }
+  }
 
-  const getArdsSeverity = () => {
-    if (ratio === 0) return { level: 'none', label: 'Belum terhitung', color: 'text-slate-400', desc: 'Masukkan parameter AGD (PaO2) dan FiO2.' };
-    if (ratio <= 100) return { level: 'severe', label: '🚨 ARDS BERAT (Severe)', color: 'text-red-500', desc: 'Mortalitas tinggi. Pertimbangkan ventilator posisi prone, neuromuskular blokade (NMB), PEEP tinggi, dan penyesuaian Tidal Volume 4-8 mL/kg PBW.' };
-    if (ratio <= 200) return { level: 'moderate', label: '⚠️ ARDS SEDANG (Moderate)', color: 'text-amber-500', desc: 'Memerlukan ventilasi mekanik invasif dengan PEEP moderat-tinggi dan strategi lung-protective.' };
-    if (ratio <= 300) return { label: '⚠️ ARDS RINGAN (Mild)', level: 'mild', color: 'text-yellow-500', desc: 'Dapat dipertimbangkan dukungan Ventilasi Non-Invasif (NIV) atau HFNC / CPAP jika kriteria terpenuhi.' };
+  // Evaluasi Keparahan ARDS berdasarkan Berlin Definition
+  const getArdsSeverity = (val) => {
+    if (val === 0) return { level: 'none', label: 'Belum terhitung', color: 'text-slate-400', desc: 'Masukkan parameter AGD (PaO2) dan FiO2.' };
+    if (val <= 100) return { level: 'severe', label: '🚨 ARDS BERAT (Severe)', color: 'text-red-500', desc: 'Mortalitas tinggi. Pertimbangkan ventilator posisi prone, neuromuskular blokade (NMB), PEEP tinggi, dan penyesuaian Tidal Volume 4-8 mL/kg PBW.' };
+    if (val <= 200) return { level: 'moderate', label: '⚠️ ARDS SEDANG (Moderate)', color: 'text-amber-500', desc: 'Memerlukan ventilasi mekanik invasif dengan PEEP moderat-tinggi dan strategi lung-protective.' };
+    if (val <= 300) return { level: 'mild', label: '⚠️ ARDS RINGAN (Mild)', color: 'text-yellow-500', desc: 'Dapat dipertimbangkan dukungan Ventilasi Non-Invasif (NIV) atau HFNC / CPAP jika kriteria terpenuhi.' };
     return { level: 'normal', label: '✅ Normal / Di Atas Batas ARDS', color: 'text-emerald-500', desc: 'Rasio PaO2/FiO2 > 300 mmHg tidak memenuhi kriteria diagnostik ARDS Berlin.' };
   };
 
-  const severity = getArdsSeverity();
+  const severity = getArdsSeverity(ratio);
 
   // Simpan hasil evaluasi PaO2/FiO2 ke Outcome Tracker Pasien
   const handleSaveToRecord = () => {
@@ -54,7 +58,7 @@ export default function ArdsCalculator() {
   return (
     <div className="space-y-6 text-xs">
       
-      {patient.patientName && (
+      {patient?.patientName && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-emerald-300 flex items-center justify-between">
           <span>✨ <strong>Pasien Aktif:</strong> {patient.patientName} (RM: {patient.patientId || '-'}) | Evaluasi gagal napas & ARDS Berlin Definition.</span>
           <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded font-mono">STORE V3 SYNCED</span>
@@ -74,10 +78,11 @@ export default function ArdsCalculator() {
       {/* INPUT PARAMETER */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label htmlFor="pao2-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             PaO2 dari Analisis Gas Darah (mmHg):
           </label>
           <input
+            id="pao2-input"
             type="number"
             value={inputs.pao2}
             onChange={(e) => setInputs({ ...inputs, pao2: e.target.value })}
@@ -89,10 +94,11 @@ export default function ArdsCalculator() {
         </div>
 
         <div>
-          <label className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <label htmlFor="fio2-input" className={`block mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             FiO2 (Fraksi Oksigen Inspirasi, % atau Desimal):
           </label>
           <input
+            id="fio2-input"
             type="number"
             value={inputs.fio2}
             onChange={(e) => setInputs({ ...inputs, fio2: e.target.value })}

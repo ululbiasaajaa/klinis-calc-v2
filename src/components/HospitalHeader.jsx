@@ -21,6 +21,13 @@ export default function HospitalHeader({ hospitalInfo: propsInfo, setHospitalInf
   // Gunakan props jika ada, jika tidak gunakan local state
   const hospitalInfo = propsInfo || localInfo;
 
+  // Sync propsInfo ke localStorage jika ada pembaruan dari parent
+  useEffect(() => {
+    if (propsInfo) {
+      localStorage.setItem('clinical_suite_hospital_info_v3', JSON.stringify(propsInfo));
+    }
+  }, [propsInfo]);
+
   const updateHospitalInfo = (newInfo) => {
     if (propsSetInfo) {
       propsSetInfo(newInfo);
@@ -52,6 +59,9 @@ export default function HospitalHeader({ hospitalInfo: propsInfo, setHospitalInf
   };
 
   const handleRemoveLogo = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     const newInfo = { ...hospitalInfo, logoUrl: '' };
     updateHospitalInfo(newInfo);
   };
@@ -78,10 +88,11 @@ export default function HospitalHeader({ hospitalInfo: propsInfo, setHospitalInf
         
         {/* NAMA RS */}
         <div className="space-y-1.5">
-          <label className={`block font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+          <label htmlFor="hospital-name-input" className={`block font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             {t?.hospitalNameLabel || 'Nama Instansi / Rumah Sakit'}
           </label>
           <input
+            id="hospital-name-input"
             type="text"
             name="name"
             value={hospitalInfo.name || ''}
@@ -97,10 +108,11 @@ export default function HospitalHeader({ hospitalInfo: propsInfo, setHospitalInf
 
         {/* ALAMAT RS */}
         <div className="space-y-1.5">
-          <label className={`block font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+          <label htmlFor="hospital-address-input" className={`block font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             {t?.hospitalAddressLabel || 'Alamat & Kontak Instansi'}
           </label>
           <input
+            id="hospital-address-input"
             type="text"
             name="address"
             value={hospitalInfo.address || ''}
@@ -116,7 +128,7 @@ export default function HospitalHeader({ hospitalInfo: propsInfo, setHospitalInf
 
         {/* LOGO UPLOAD SECTION */}
         <div className="space-y-1.5">
-          <label className={`block font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+          <label id="hospital-logo-label" className={`block font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             {t?.hospitalLogoLabel || 'Logo Resmi Instansi (PNG/JPG)'}
           </label>
           
@@ -126,6 +138,7 @@ export default function HospitalHeader({ hospitalInfo: propsInfo, setHospitalInf
             onChange={handleLogoUpload}
             accept="image/*"
             className="hidden"
+            aria-labelledby="hospital-logo-label"
           />
 
           <div className="flex items-center gap-2">

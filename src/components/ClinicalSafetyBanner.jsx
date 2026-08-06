@@ -1,17 +1,21 @@
 import React from 'react';
+import { useTheme } from '../context/ThemeContext';
 import { usePatientStore } from '../store/usePatientStore';
 
 export default function ClinicalSafetyBanner({ activeTab, currentInputs }) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
   // MEMANGGIL STORE V3 SEBAGAI SINGLE SOURCE OF TRUTH
   const { patient, getClinicalContext, medications } = usePatientStore();
-  const { egfr, clcr } = getClinicalContext();
+  const { egfr } = getClinicalContext();
 
   // Logika deteksi risiko tinggi otomatis berbasis Store v3 & Modul Aktif
   const getRiskAlerts = () => {
     let alerts = [];
 
     // 1. GLOBAL RENAL SAFETY CHECK (Selalu Aktif Apapun Modulnya)
-    const scr = parseFloat(patient.serumCreatinine) || parseFloat(currentInputs?.scr) || 0;
+    const scr = parseFloat(patient?.serumCreatinine) || parseFloat(currentInputs?.scr) || 0;
     if (scr > 2.0 || (egfr > 0 && egfr < 30)) {
       alerts.push({
         type: 'critical',
@@ -39,7 +43,7 @@ export default function ClinicalSafetyBanner({ activeTab, currentInputs }) {
     }
 
     // 3. MEDICATION DDI / HIGH-RISK DRUG CHECK
-    if (medications.length > 0) {
+    if (medications && medications.length > 0) {
       alerts.push({
         type: 'info',
         title: '💊 ACTIVE MEDICATIONS MONITORED:',
@@ -64,19 +68,28 @@ export default function ClinicalSafetyBanner({ activeTab, currentInputs }) {
   return (
     <div className="mb-6 space-y-2">
       {currentAlerts.map((item, idx) => {
-        let borderBgStyle = 'from-blue-950/80 via-slate-900 to-slate-900 border-blue-500/40 text-blue-400';
+        let borderBgStyle = isDark
+          ? 'from-blue-950/80 via-slate-900 to-slate-900 border-blue-500/40 text-blue-400'
+          : 'from-blue-50 via-white to-white border-blue-200 text-blue-700 shadow-sm';
+
         if (item.type === 'critical') {
-          borderBgStyle = 'from-red-950/90 via-slate-900 to-slate-900 border-red-500/60 text-red-400 animate-pulse';
+          borderBgStyle = isDark
+            ? 'from-red-950/90 via-slate-900 to-slate-900 border-red-500/60 text-red-400 animate-pulse'
+            : 'from-red-50 via-white to-white border-red-300 text-red-700 shadow-sm animate-pulse';
         } else if (item.type === 'warning') {
-          borderBgStyle = 'from-amber-950/80 via-slate-900 to-slate-900 border-amber-500/40 text-amber-400';
+          borderBgStyle = isDark
+            ? 'from-amber-950/80 via-slate-900 to-slate-900 border-amber-500/40 text-amber-400'
+            : 'from-amber-50 via-white to-white border-amber-200 text-amber-800 shadow-sm';
         }
 
         return (
-          <div key={idx} className={`p-4 rounded-2xl bg-gradient-to-r border shadow-xl flex items-start gap-3 ${borderBgStyle}`}>
+          <div key={idx} className={`p-4 rounded-2xl bg-gradient-to-r border shadow-xl flex items-start gap-3 transition-all ${borderBgStyle}`}>
             <span className="text-xl">🛡️</span>
             <div className="text-xs">
               <span className="font-bold block mb-0.5">{item.title}</span>
-              <p className="text-slate-300 leading-relaxed">{item.desc}</p>
+              <p className={`leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                {item.desc}
+              </p>
             </div>
           </div>
         );
