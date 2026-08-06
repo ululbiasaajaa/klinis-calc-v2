@@ -49,7 +49,7 @@ ${JSON.stringify(patientContext.clinicalContext ?? {}, null, 2)}
 `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash", // Menggunakan model Gemini 3.6 Flash terbaru
       contents: `${systemInstruction}
 
 User:
